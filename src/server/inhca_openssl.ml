@@ -4,11 +4,20 @@ exception Openssl_failed of Unix.process_status
 
 let get_cadir () = Filename.concat (Ocsigen_config.get_datadir ()) "CA"
 let get_capath fp = Filename.concat (get_cadir ()) fp
+let get_tmpdir () = Filename.concat (Ocsigen_config.get_datadir ()) "tmp"
+let get_tmppath fp = Filename.concat (get_tmpdir ()) fp
+let () =
+  if not (Sys.file_exists (get_tmpdir ())) then Unix.mkdir (get_tmpdir ()) 0o700
+
+let with_in f fp =
+  let ic = open_in fp in
+  let r = try f ic with xc -> close_in ic; raise xc in
+  close_in ic; r
 
 let with_out f fp =
   let oc = open_out fp in
-  (try f oc with xc -> close_out oc; raise xc);
-  close_out oc
+  let r = try f oc with xc -> close_out oc; raise xc in
+  close_out oc; r
 
 let openssl cmd args =
   let config = get_capath "openssl.cnf" in
@@ -17,14 +26,24 @@ let openssl cmd args =
   | Unix.WEXITED 0 -> Lwt.return ()
   | st -> Lwt.fail (Openssl_failed st)
 
+let save_spkac comps = with_out
+  begin fun oc ->
+    let comp_counters = Hashtbl.create 8 in
+    List.iter
+      begin fun (k, v) ->
+	let i = try Hashtbl.find comp_counters k with Not_found -> 0 in
+	fprintf oc "%d.%s=%s\n" i k v;
+	Hashtbl.replace comp_counters k (i + 1)
+      end
+      comps
+  end
+
 let sign_spkac ?(days = 365) request_id comps =
-  let workdir = Filename.concat (Ocsigen_config.get_datadir ()) request_id in
+  let workdir = get_tmppath request_id in
   if not (Sys.file_exists workdir) then Unix.mkdir workdir 0o700;
   let spkac_path = Filename.concat workdir "inhclient.spkac" in
-  with_out (fun spkac_out ->
-	      List.iter (fun (k, v) -> fprintf spkac_out "%s=%s\n" k v) comps)
-	   spkac_path;
-  let cert_path = Filename.concat workdir "inhclient.crt" in
+  save_spkac comps spkac_path;
+  let cert_path = Filename.concat workdir "inhclient.pem" in
   openssl "ca" ["-days"; string_of_int days; "-notext"; "-batch";
 	        "-spkac"; spkac_path; "-out"; cert_path] >>
   Lwt.return cert_path

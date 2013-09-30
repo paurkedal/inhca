@@ -6,7 +6,7 @@
 }}
 
 let request_table : Inhca_data.request Ocsipersist.table =
-  Ocsipersist.open_table "requests"
+  Inhca_public.request_table
 
 module Main_app =
   Eliom_registration.App (struct let application_name = "src-inhca_admin" end)

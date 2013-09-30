@@ -1,6 +1,7 @@
 open Eliom_content
 open Inhca_data
-open Inhca_services
+open Unprime
+open Unprime_char
 open Unprime_option
 open Unprime_string
 
@@ -54,9 +55,12 @@ let keygen_handler request_id () =
 let signing_handler request_id spkac =
   try
     lwt req = Ocsipersist.find request_table request_id in
+    Ocsipersist.remove request_table request_id >>
+    let spkac = String.filter (not *< Char.is_space) spkac in
     let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn in
     lwt cert = Inhca_openssl.sign_spkac request_id spkac_req in
-    Eliom_registration.File.send cert
+    Eliom_registration.File.send ~content_type:"application/x-x509-user-cert"
+				 cert
   with Not_found ->
     Inhca_tools.F.send_error ~code:404 "No such certificate request."
 
