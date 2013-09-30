@@ -7,7 +7,7 @@ License: GPL-3
 Plugins: META (0.3), DevFiles (0.3)
 
 BuildType: custom (0.3)
-BuildTools: ocamlbuild-with-findlib
+#BuildTools: ocamlbuild-with-findlib
 BuildDepends: eliom, prime
 XCustomBuild: ocamlbuild-with-findlib client.otarget server.otarget
 XCustomBuildClean: ocamlbuild-with-findlib -clean
