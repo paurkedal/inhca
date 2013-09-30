@@ -1,0 +1,10 @@
+version = "$pkg_version"
+description = "In-house CA"
+
+package "server" (
+  description = "Inhca server"
+  version = "$pkg_version"
+  directory = "server"
+  requires = "config-file,eliom.server,prime,prime.testing"
+  archive(byte) = "eliom.cma"
+)

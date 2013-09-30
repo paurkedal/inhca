@@ -4,10 +4,33 @@ Version: 0.1
 Synopsis: In-house CA
 Authors: Petter A. Urkedal
 License: GPL-3
-Plugins: META (0.3), DevFiles (0.3)
+Plugins: DevFiles (0.3)
+
+FilesAB: src/META.ab
 
 BuildType: custom (0.3)
 #BuildTools: ocamlbuild-with-findlib
 BuildDepends: eliom, prime
 XCustomBuild: ocamlbuild-with-findlib client.otarget server.otarget
 XCustomBuildClean: ocamlbuild-with-findlib -clean
+
+InstallType: custom (0.3)
+XCustomInstall:
+  set -e
+  ocamlfind install inhca src/META \
+    _build/src/server/*.cma \
+    _build/src/server/*.cmi
+  install -d $datadir/inhca/static/css
+  install static/css/*.css $datadir/inhca/static/css/
+  install _build/static/*.js $datadir/inhca/static/
+  echo "Installed static web content under $datadir/inhca/static"
+  install _build/inhca.conf $datadir/inhca/inhca.conf.sample
+  echo "Installed sample configuration to $datadir/inhca"
+  install -d $localstatedir/lib/inhca
+  install -d $localstatedir/log/inhca
+  install -d $localstatedir/run/inhca
+  echo "Created runtime directories under $localstatedir"
+XCustomUninstall:
+  ocamlfind remove inhca
+  rm -rf $datadir/inhca
+  echo "Removed $datadir/inhca"
