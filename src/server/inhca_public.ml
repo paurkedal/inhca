@@ -7,9 +7,6 @@ open Unprime_string
 
 let th_p s = Html5.F.th [Html5.F.pcdata s]
 
-let request_table : Inhca_data.request Ocsipersist.table =
-  Ocsipersist.open_table "requests"
-
 let base_dn =
   List.map (fun s -> Option.get (String.cut_affix "=" s))
     (String.chop_affix "," Inhca_config.subject_base_dn#get)
@@ -55,7 +52,7 @@ let keygen_handler request_id () =
 let signing_handler request_id spkac =
   try
     lwt req = Ocsipersist.find request_table request_id in
-    Ocsipersist.remove request_table request_id >>
+    Eliom_bus.write edit_bus (`remove req);
     let spkac = String.filter (not *< Char.is_space) spkac in
     let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn in
     lwt cert = Inhca_openssl.sign_spkac request_id spkac_req in
