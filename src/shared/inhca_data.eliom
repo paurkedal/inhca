@@ -36,13 +36,9 @@ open Printf
 
   let edit_bus = Eliom_bus.create Json.t<edit_message>
 
-  let fresh_request_id () =
-    (* FIXME: Make sure the random numbers are really unpredictable. *)
-    let code = Random.int64 Int64.max_int in
-    sprintf "%0Lx" code
+  let fresh_request_id () = Ocsigen_lib.make_cryptographic_safe_string ()
 
   let () =
-    Random.self_init ();
     Lwt.async (fun () ->
       Lwt_stream.iter_s
 	(function

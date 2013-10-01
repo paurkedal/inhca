@@ -54,11 +54,13 @@ let main_handler () () =
     let email_input = Html5.To_dom.of_input %email_input in
     let cn = Js.to_string cn_input##value in
     let email = Js.to_string email_input##value in
-    cn_input##value <- Js.string "";
-    email_input##value <- Js.string "";
-    Lwt.async (fun () ->
-      Eliom_client.call_caml_service ~service:%create_request_service
-	() (cn, email))
+    if cn <> "" then begin
+      cn_input##value <- Js.string "";
+      email_input##value <- Js.string "";
+      Lwt.async (fun () ->
+	Eliom_client.call_caml_service ~service:%create_request_service
+	  () (cn, email))
+    end
   }} in
   let add_button = Html5.D.(button ~a:[a_onclick add_handler]
 				   ~button_type:`Button [pcdata "add"]) in
