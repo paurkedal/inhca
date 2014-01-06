@@ -20,5 +20,13 @@ let subject_base_dn =
   new Config_file.string_cp ~group ["subject"; "base_dn"]
 			    "OU=Inhca,DC=example,DC=org" "Subject base DN"
 
+let auth_http_header_cp =
+  new Config_file.option_cp Config_file.string_wrappers ~group
+			    ["auth"; "http_header"]
+    None "HTTP header used to identify a logged-in user (e.g. SSL_CLIENT_S_DN)."
+let auth_admins_cp =
+  new Config_file.list_cp Config_file.string_wrappers ~group ["auth"; "admins"]
+    [] "List of values for the given HTTP header which grant admin access."
+
 let () =
   group#read (Filename.concat (Ocsigen_config.get_datadir ()) "inhca.conf")

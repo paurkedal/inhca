@@ -46,6 +46,8 @@ let main_service =
 }}
 
 let main_handler () () =
+  Inhca_tools.authorize_admin () >>
+
   let cn_input = Html5.D.input ~input_type:`Text () in
   let email_input = Html5.D.input ~input_type:`Text () in
 
