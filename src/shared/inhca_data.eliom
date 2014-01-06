@@ -36,7 +36,9 @@ open Printf
 
   let edit_bus = Eliom_bus.create Json.t<edit_message>
 
-  let fresh_request_id () = Ocsigen_lib.make_cryptographic_safe_string ()
+  let fresh_request_id () =
+    String.map (function '/' -> '-' | c -> c)
+      (Ocsigen_lib.make_cryptographic_safe_string ())
 
   let () =
     Lwt.async (fun () ->
