@@ -1,36 +1,35 @@
-OASISFormat: 0.3
+OASISFormat: 0.4
 Name: inhca
 Version: 0.1
 Synopsis: In-house CA
 Authors: Petter A. Urkedal
 License: GPL-3
-Plugins: DevFiles (0.3)
+AlphaFeatures: ocamlbuild_more_args
+Plugins: DevFiles (0.4), META (0.4)
+BuildTools: ocamlbuild
+XOCamlbuildPluginTags: package(eliom.ocamlbuild)
+OCamlVersion: >= 4.01
 
-FilesAB: src/META.ab
+Library inhca
+  Path: web
+  Modules:
+    server/Inhca_admin,
+    server/Inhca_config,
+    server/Inhca_data,
+    server/Inhca_openssl,
+    server/Inhca_public,
+    server/Inhca_services,
+    server/Inhca_tools
+  BuildDepends: config-file, eliom.server, prime, prime.testing
+  ByteOpt: -thread
+  NativeOpt: -thread
+  DataFiles:
+    static/css/*.css ($datadir/inhca/static/css),
+    ../_build/web/client/*.js ($datadir/inhca/static)
 
-BuildType: custom (0.3)
-#BuildTools: ocamlbuild-with-findlib
-BuildDepends: eliom, prime
-XCustomBuild: ocamlbuild-with-findlib client.otarget server.otarget
-XCustomBuildClean: ocamlbuild-with-findlib -clean
-
-InstallType: custom (0.3)
-XCustomInstall:
-  set -e
-  ocamlfind install inhca src/META \
-    _build/src/server/*.cma \
-    _build/src/server/*.cmi
-  install -d $datadir/inhca/static/css
-  install static/css/*.css $datadir/inhca/static/css/
-  install _build/static/*.js $datadir/inhca/static/
-  echo "Installed static web content under $datadir/inhca/static"
-  install _build/inhca.conf $datadir/inhca/inhca.conf.sample
-  echo "Installed sample configuration to $datadir/inhca"
-  install -d $localstatedir/lib/inhca
-  install -d $localstatedir/log/inhca
-  install -d $localstatedir/run/inhca
-  echo "Created runtime directories under $localstatedir"
-XCustomUninstall:
-  ocamlfind remove inhca
-  rm -rf $datadir/inhca
-  echo "Removed $datadir/inhca"
+Executable inhca_admin
+  Path: web
+  MainIs: client/admin.ml
+  BuildDepends: eliom.client, js_of_ocaml.deriving, prime, prime.testing
+  ByteOpt: -thread
+  Install: false

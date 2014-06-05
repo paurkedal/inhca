@@ -8,10 +8,10 @@
 open Inhca_services
 
 module Main_app =
-  Eliom_registration.App (struct let application_name = "src-inhca_admin" end)
+  Eliom_registration.App (struct let application_name = "admin" end)
 
 let main_service =
-  Eliom_service.service ~path:["admin"] ~get_params:Eliom_parameter.unit ()
+  Eliom_service.App.service ~path:["admin"] ~get_params:Eliom_parameter.unit ()
 
 {client{
 
@@ -60,7 +60,7 @@ let main_handler () () =
       cn_input##value <- Js.string "";
       email_input##value <- Js.string "";
       Lwt.async (fun () ->
-	Eliom_client.call_caml_service ~service:%create_request_service
+	Eliom_client.call_ocaml_service ~service:%create_request_service
 	  () (cn, email))
     end
   }} in
@@ -80,7 +80,7 @@ let main_handler () () =
       (Js.Unsafe.coerce (Dom.eventTarget ev)
 	:> Dom_html.inputElement Js.t)##disabled <- Js._true;
       Lwt.async (fun () ->
-	Eliom_client.call_caml_service ~service:%delete_request_service ()
+	Eliom_client.call_ocaml_service ~service:%delete_request_service ()
 	  (req.request_id, (req.request_cn, req.request_email))) in
 
     let request_link req =
@@ -94,7 +94,7 @@ let main_handler () () =
     Lwt.ignore_result begin
       let req_table_elem = Html5.To_dom.of_table %req_table in
       lwt request_list =
-	Eliom_client.call_caml_service ~service:%list_requests_service () () in
+	Eliom_client.call_ocaml_service ~service:%list_requests_service () () in
       let request_set =
 	ref (List.fold Request_set.add request_list Request_set.empty) in
 

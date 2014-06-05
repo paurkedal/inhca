@@ -19,8 +19,7 @@ let create_request_service =
 	request_spkac = None;
 	request_pending = [`generate_key; `fetch_certificate];
       } in
-      Eliom_bus.write edit_bus (`add req);
-      Lwt.return_unit)
+      Eliom_bus.write edit_bus (`add req))
 
 let delete_request_service =
   Eliom_registration.Ocaml.register_post_coservice'
@@ -34,5 +33,4 @@ let delete_request_service =
 	request_spkac = None; (* dummy for `remove *)
 	request_pending = []; (* dummy for `remove *)
       } in
-      Eliom_bus.write edit_bus (`remove req);
-      Lwt.return_unit)
+      Eliom_bus.write edit_bus (`remove req))

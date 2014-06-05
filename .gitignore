@@ -4,4 +4,5 @@
 /_var
 /configure
 /setup.data
+/setup.log
 /setup.ml
