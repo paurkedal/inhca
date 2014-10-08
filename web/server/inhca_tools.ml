@@ -15,16 +15,6 @@ module F = struct
 
 end
 
-let get_request_headers () =
-  let ri = Eliom_request_info.get_ri () in
-  let frame = ri.Ocsigen_extensions.ri_http_frame in
-  let frame_header = frame.Ocsigen_http_frame.frame_header in
-  let hdrs = Ocsigen_http_frame.Http_header.get_headers frame_header in
-  let open Http_headers in
-  let ht = NameHtbl.create 13 in
-  Http_headers.iter (NameHtbl.add ht) hdrs;
-  ht
-
 let http_error code msg =
   Lwt.fail (Ocsigen_http_frame.Http_error.Http_exception (code, Some msg, None))
 let http_error_f code fmt = ksprintf (http_error code) fmt
@@ -33,11 +23,11 @@ let authorize_admin () =
   match Inhca_config.auth_http_header_cp#get with
   | None -> Lwt.return_unit
   | Some h ->
-    let hdrs = get_request_headers () in
+    let ri = Eliom_request_info.get_ri () in
+    let frame = Ocsigen_extensions.Ocsigen_request_info.http_frame ri in
     lwt user =
-      try Lwt.return (Http_headers.NameHtbl.find hdrs (Http_headers.name h))
-      with Not_found -> http_error 500 "Missing authentication header."
-    in
+      try Lwt.return (Ocsigen_headers.find h frame)
+      with Not_found -> http_error 500 "Missing authentication header." in
     if List.mem user Inhca_config.auth_admins_cp#get
     then Lwt.return_unit
     else http_error 403 "Admin access required."

@@ -37,8 +37,8 @@ let keygen_handler request_id () =
     post_form ~service:signing_service
       (fun spkac -> [
 	table
-	  (tr [th_p "Full name"; td [pcdata req.request_cn]])
-	  [tr [th_p "Email"; td [pcdata req.request_email]];
+	  [tr [th_p "Full name"; td [pcdata req.request_cn]];
+	   tr [th_p "Email"; td [pcdata req.request_email]];
 	   tr [th_p "Key strength";
 	       td [keygen
 		    ~a:[a_name (Eliom_parameter.string_of_param_name spkac)]

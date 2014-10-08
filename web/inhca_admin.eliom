@@ -68,9 +68,9 @@ let main_handler () () =
 				   ~button_type:`Button [pcdata "add"]) in
   let req_table = Html5.D.(
     table ~a:[a_class ["std"]]
-      (tr [th [pcdata "Id"]; th [pcdata "Pending"];
-	   th [pcdata "CN"]; th [pcdata "Email"]])
-      [tr [td []; td []; td [cn_input]; td [email_input]; td [add_button]]]
+      [tr [th [pcdata "Id"]; th [pcdata "Pending"];
+	   th [pcdata "CN"]; th [pcdata "Email"]];
+       tr [td []; td []; td [cn_input]; td [email_input]; td [add_button]]]
   ) in
   ignore {unit{
 
