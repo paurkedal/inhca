@@ -112,8 +112,8 @@ let main_handler () () =
 	  Eliom_lib.debug "Deleting %s (%s, %s)."
 			  req.request_id req.request_cn req.request_email;
 	  begin match Request_set.locate req !request_set with
-	  | None -> Eliom_lib.error "Can't find the request to delete."
-	  | Some i ->
+	  | false, _ -> Eliom_lib.error "Can't find the request to delete."
+	  | true, i ->
 	    request_set := Request_set.remove req !request_set;
 	    req_table_elem##deleteRow (static_row_count + i)
 	  end
@@ -121,11 +121,10 @@ let main_handler () () =
 	  Eliom_lib.debug "Adding %s." req.request_id;
 	  let row =
 	    match Request_set.locate req !request_set with
-	    | None ->
+	    | false, i ->
 	      request_set := Request_set.add req !request_set;
-	      let i = Option.get (Request_set.locate req !request_set) in
 	      req_table_elem##insertRow (static_row_count + i)
-	    | Some i ->
+	    | true, i ->
 	      Js.Opt.get (req_table_elem##rows##item (static_row_count + i))
 			 (fun () -> failwith "Js.Opt.get") in
 	  List.iter
