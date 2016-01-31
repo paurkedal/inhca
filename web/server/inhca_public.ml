@@ -14,14 +14,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Eliom_content
+open Eliom_content.Html5
 open Inhca_data
 open Unprime
 open Unprime_char
 open Unprime_option
 open Unprime_string
 
-let th_p s = Html5.F.th [Html5.F.pcdata s]
+let th_p s = F.th [F.pcdata s]
 
 let base_dn =
   List.map (fun s -> Option.get (String.cut_affix "=" s))
@@ -43,37 +43,42 @@ let signing_service =
     ~post_params:Eliom_parameter.(string "spkac") ()
 
 let main_handler () () =
-  Lwt.return Html5.F.(Inhca_tools.F.page ~title:"Inhca" [
+  Lwt.return F.(Inhca_tools.F.page ~title:"Inhca" [
     p [pcdata "Nothing to see here."]
   ])
 
 let keygen_handler request_id () =
   lwt req = Ocsipersist.find request_table request_id in
-  Lwt.return Html5.F.(Inhca_tools.F.page ~title:"Fetch Certificate" [
-    post_form ~service:signing_service
+  Lwt.return @@ Inhca_tools.F.page ~title:"Fetch Certificate" [
+    F.Form.post_form ~service:signing_service
       (fun spkac -> [
-	p [
-	  pcdata "Using this page, your browser will request a certificate \
-		  which will be immediately installed in your current \
-		  browser.  \
-		  You only get one certificate, but you can export it and \
-		  import it into another browser or computer using e.g. \
-		  SSH or a private USB stick for secure transport.";
+	F.p [
+	  F.pcdata
+	    "Using this page, your browser will request a certificate which
+	     will be immediately installed in your current browser. \
+	     You only get one certificate, but you can export it and import \
+	     it into another browser or computer using e.g. SSH or a private \
+	     USB stick for secure transport.";
 	];
-	table ~a:[a_class ["assoc"]]
-	  [tr [th_p "Full name:"; td [pcdata req.request_cn]];
-	   tr [th_p "Email:"; td [pcdata req.request_email]];
-	   tr [th_p "Key strength:";
-	       td [keygen
-		    ~a:[a_name (Eliom_parameter.string_of_param_name spkac)]
-		    ()]];
-	   tr ~a:[a_class ["submit"]]
-	      [td [];
-	       td [string_input ~input_type:`Submit
-				~value:"Install certificate" ()]] ]
+	F.table ~a:[F.a_class ["assoc"]] [
+	  F.tr [th_p "Full name:"; F.td [F.pcdata req.request_cn]];
+	  F.tr [th_p "Email:"; F.td [F.pcdata req.request_email]];
+	  F.tr [
+	    th_p "Key strength:";
+	    F.td [
+	      F.keygen
+		~a:[F.a_name (Eliom_parameter.string_of_param_name spkac)] ()
+	    ]
+	  ];
+	  F.tr ~a:[F.a_class ["submit"]] [
+	    F.td [];
+	    F.td [F.Form.input ~input_type:`Submit
+			       ~value:"Install certificate" F.Form.string]
+	  ]
+	]
       ])
       request_id
-  ])
+  ]
 
 let signing_handler request_id spkac =
   try

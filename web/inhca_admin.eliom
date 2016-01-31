@@ -15,7 +15,7 @@
  *)
 
 {shared{
-  open Eliom_content
+  open Eliom_content.Html5
   open Inhca_data
   open Unprime_list
   open Unprime_option
@@ -32,21 +32,21 @@ let main_service =
 {client{
 
   let tds_of_request request_link delete_handler req =
-    let open Html5.D in
     let render_step = function
-      | `generate_key -> pcdata "K"
-      | `moderate -> pcdata "M"
-      | `validate_email -> pcdata "V"
-      | `fetch_certificate -> pcdata "F" in
-    [td [request_link req];
-     td (List.map render_step req.request_pending);
-     td [pcdata req.request_cn];
-     td [pcdata req.request_email];
-     td [button ~a:[a_onclick (delete_handler req)]
-		~button_type:`Button [pcdata "delete"]];
-     ]
+      | `generate_key -> D.pcdata "K"
+      | `moderate -> D.pcdata "M"
+      | `validate_email -> D.pcdata "V"
+      | `fetch_certificate -> D.pcdata "F" in
+    [ D.td [request_link req];
+      D.td (List.map render_step req.request_pending);
+      D.td [D.pcdata req.request_cn];
+      D.td [D.pcdata req.request_email];
+      D.td [D.button ~a:[D.a_button_type `Button;
+			 D.a_onclick (delete_handler req)]
+		     [D.pcdata "delete"]];
+    ]
   let tr_of_request request_link delete_handler req =
-    Html5.D.tr (tds_of_request request_link delete_handler req)
+    D.tr (tds_of_request request_link delete_handler req)
 
   module Request_set = Prime_enumset.Make
     (struct
@@ -64,12 +64,12 @@ let main_service =
 let main_handler () () =
   Inhca_tools.authorize_admin () >>
 
-  let cn_input = Html5.D.input ~input_type:`Text () in
-  let email_input = Html5.D.input ~input_type:`Text () in
+  let cn_input = D.input ~a:[D.a_input_type `Text] () in
+  let email_input = D.input ~a:[D.a_input_type `Text] () in
 
   let add_handler = {{fun ev ->
-    let cn_input = Html5.To_dom.of_input %cn_input in
-    let email_input = Html5.To_dom.of_input %email_input in
+    let cn_input = To_dom.of_input %cn_input in
+    let email_input = To_dom.of_input %email_input in
     let cn = Js.to_string cn_input##value in
     let email = Js.to_string email_input##value in
     if cn <> "" then begin
@@ -80,14 +80,17 @@ let main_handler () () =
 	  () (cn, email))
     end
   }} in
-  let add_button = Html5.D.(button ~a:[a_onclick add_handler]
-				   ~button_type:`Button [pcdata "add"]) in
-  let req_table = Html5.D.(
-    table ~a:[a_class ["std"]]
-      [tr [th [pcdata "Id"]; th [pcdata "Pending"];
-	   th [pcdata "CN"]; th [pcdata "Email"]];
-       tr [td []; td []; td [cn_input]; td [email_input]; td [add_button]]]
-  ) in
+  let add_button =
+    D.button ~a:[D.a_onclick add_handler; D.a_button_type `Button]
+	     [D.pcdata "add"] in
+  let req_table =
+    D.table ~a:[D.a_class ["std"]] [
+      D.tr [D.th [D.pcdata "Id"]; D.th [D.pcdata "Pending"];
+	    D.th [D.pcdata "CN"]; D.th [D.pcdata "Email"]];
+      D.tr [D.td []; D.td [];
+	    D.td [cn_input]; D.td [email_input];
+	    D.td [add_button]]
+    ] in
   ignore {unit{
 
     let static_row_count = 2 in
@@ -100,15 +103,15 @@ let main_handler () () =
 	  (req.request_id, (req.request_cn, req.request_email))) in
 
     let request_link req =
-      Html5.D.(a ~service:%Inhca_public.keygen_service [pcdata req.request_id]
-		 req.request_id) in
+      D.a ~service:%Inhca_public.keygen_service [D.pcdata req.request_id]
+	  req.request_id in
 
     Lwt.async_exception_hook := begin fun xc ->
       Eliom_lib.error "Inhca_ca client: %s" (Printexc.to_string xc)
     end;
 
     Lwt.ignore_result begin
-      let req_table_elem = Html5.To_dom.of_table %req_table in
+      let req_table_elem = To_dom.of_table %req_table in
       lwt request_list =
 	Eliom_client.call_ocaml_service ~service:%list_requests_service () () in
       let request_set =
@@ -117,7 +120,7 @@ let main_handler () () =
       (* Populate the request table. *)
       Request_set.iter (fun req ->
 	ignore (req_table_elem##appendChild
-		  ((Html5.To_dom.of_tr
+		  ((To_dom.of_tr
 		      (tr_of_request request_link delete_handler req)
 		    :> Dom.node Js.t))))
 	!request_set;
@@ -145,8 +148,7 @@ let main_handler () () =
 			 (fun () -> failwith "Js.Opt.get") in
 	  List.iter
 	    (fun cell ->
-	      ignore (row##appendChild((Html5.To_dom.of_td cell
-					:> Dom.node Js.t))))
+	      ignore (row##appendChild((To_dom.of_td cell :> Dom.node Js.t))))
 	    (tds_of_request request_link delete_handler req) in
       Lwt.async
 	(fun () -> Lwt_stream.iter update (Eliom_bus.stream %edit_bus));
