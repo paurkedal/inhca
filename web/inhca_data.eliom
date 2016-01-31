@@ -59,8 +59,8 @@ open Printf
   let () =
     Lwt.async (fun () ->
       Lwt_stream.iter_s
-	(function
-	  | `add req -> Ocsipersist.add request_table req.request_id req
-	  | `remove req -> Ocsipersist.remove request_table req.request_id)
-	(Eliom_bus.stream edit_bus))
+        (function
+          | `add req -> Ocsipersist.add request_table req.request_id req
+          | `remove req -> Ocsipersist.remove request_table req.request_id)
+        (Eliom_bus.stream edit_bus))
 }}

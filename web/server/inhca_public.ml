@@ -52,30 +52,30 @@ let keygen_handler request_id () =
   Lwt.return @@ Inhca_tools.F.page ~title:"Fetch Certificate" [
     F.Form.post_form ~service:signing_service
       (fun spkac -> [
-	F.p [
-	  F.pcdata
-	    "Using this page, your browser will request a certificate which
-	     will be immediately installed in your current browser. \
-	     You only get one certificate, but you can export it and import \
-	     it into another browser or computer using e.g. SSH or a private \
-	     USB stick for secure transport.";
-	];
-	F.table ~a:[F.a_class ["assoc"]] [
-	  F.tr [th_p "Full name:"; F.td [F.pcdata req.request_cn]];
-	  F.tr [th_p "Email:"; F.td [F.pcdata req.request_email]];
-	  F.tr [
-	    th_p "Key strength:";
-	    F.td [
-	      F.keygen
-		~a:[F.a_name (Eliom_parameter.string_of_param_name spkac)] ()
-	    ]
-	  ];
-	  F.tr ~a:[F.a_class ["submit"]] [
-	    F.td [];
-	    F.td [F.Form.input ~input_type:`Submit
-			       ~value:"Install certificate" F.Form.string]
-	  ]
-	]
+        F.p [
+          F.pcdata
+            "Using this page, your browser will request a certificate which
+             will be immediately installed in your current browser. \
+             You only get one certificate, but you can export it and import \
+             it into another browser or computer using e.g. SSH or a private \
+             USB stick for secure transport.";
+        ];
+        F.table ~a:[F.a_class ["assoc"]] [
+          F.tr [th_p "Full name:"; F.td [F.pcdata req.request_cn]];
+          F.tr [th_p "Email:"; F.td [F.pcdata req.request_email]];
+          F.tr [
+            th_p "Key strength:";
+            F.td [
+              F.keygen
+                ~a:[F.a_name (Eliom_parameter.string_of_param_name spkac)] ()
+            ]
+          ];
+          F.tr ~a:[F.a_class ["submit"]] [
+            F.td [];
+            F.td [F.Form.input ~input_type:`Submit
+                               ~value:"Install certificate" F.Form.string]
+          ]
+        ]
       ])
       request_id
   ]
@@ -88,7 +88,7 @@ let signing_handler request_id spkac =
     let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn in
     lwt cert = Inhca_openssl.sign_spkac request_id spkac_req in
     Eliom_registration.File.send ~content_type:"application/x-x509-user-cert"
-				 cert
+                                 cert
   with Not_found ->
     Inhca_tools.F.send_error ~code:404 "No such certificate request."
 

@@ -27,7 +27,7 @@ module F = struct
     let hdr = sprintf "Error %d" code in
     Eliom_registration.Html5.send ~code
       (Eliom_tools.F.html ~title:hdr ~css:[["css"; "inhca.css"]]
-	Html5.F.(body [h1 [pcdata hdr]; p [pcdata msg]]))
+        Html5.F.(body [h1 [pcdata hdr]; p [pcdata msg]]))
 
 end
 

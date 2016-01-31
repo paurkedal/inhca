@@ -37,9 +37,9 @@ let save_spkac comps fp = Lwt_io.with_file Lwt_io.output fp
     let comp_counters = Hashtbl.create 8 in
     Lwt_list.iter_s
       begin fun (k, v) ->
-	let i = try Hashtbl.find comp_counters k with Not_found -> 0 in
-	Hashtbl.replace comp_counters k (i + 1);
-	Lwt_io.fprintf oc "%d.%s=%s\n" i k v
+        let i = try Hashtbl.find comp_counters k with Not_found -> 0 in
+        Hashtbl.replace comp_counters k (i + 1);
+        Lwt_io.fprintf oc "%d.%s=%s\n" i k v
       end
       comps
   end
@@ -51,5 +51,5 @@ let sign_spkac ?(days = 365) request_id comps =
   save_spkac comps spkac_path >>
   let cert_path = Filename.concat workdir "inhclient.pem" in
   openssl "ca" ["-days"; string_of_int days; "-notext"; "-batch";
-	        "-spkac"; spkac_path; "-out"; cert_path] >>
+                "-spkac"; spkac_path; "-out"; cert_path] >>
   Lwt.return cert_path
