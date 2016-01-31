@@ -36,15 +36,25 @@ let keygen_handler request_id () =
   Lwt.return Html5.F.(Inhca_tools.F.page ~title:"Fetch Certificate" [
     post_form ~service:signing_service
       (fun spkac -> [
-	table
-	  [tr [th_p "Full name"; td [pcdata req.request_cn]];
-	   tr [th_p "Email"; td [pcdata req.request_email]];
-	   tr [th_p "Key strength";
+	p [
+	  pcdata "Using this page, your browser will request a certificate \
+		  which will be immediately installed in your current \
+		  browser.  \
+		  You only get one certificate, but you can export it and \
+		  import it into another browser or computer using e.g. \
+		  SSH or a private USB stick for secure transport.";
+	];
+	table ~a:[a_class ["assoc"]]
+	  [tr [th_p "Full name:"; td [pcdata req.request_cn]];
+	   tr [th_p "Email:"; td [pcdata req.request_email]];
+	   tr [th_p "Key strength:";
 	       td [keygen
 		    ~a:[a_name (Eliom_parameter.string_of_param_name spkac)]
 		    ()]];
-	   tr [td [];
-	       td [string_input ~input_type:`Submit ~value:"Submit" ()]] ]
+	   tr ~a:[a_class ["submit"]]
+	      [td [];
+	       td [string_input ~input_type:`Submit
+				~value:"Install certificate" ()]] ]
       ])
       request_id
   ])

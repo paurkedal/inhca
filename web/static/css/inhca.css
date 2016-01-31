@@ -1,7 +1,13 @@
 body {
 	background-color: #ffffff;
 	color: black;
+	margin: 2rem 3rem;
 }
+
+table.assoc { border-collapse: collapse; }
+table.assoc td { padding: 0.1rem 0; }
+table.assoc th { text-align: right; padding-right: 0.4rem; }
+table.assoc tr.submit td { padding-top: 0.4rem; }
 
 table.std {
 	margin: 5mm 0;
