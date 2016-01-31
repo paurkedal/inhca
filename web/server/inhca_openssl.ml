@@ -25,16 +25,6 @@ let get_tmppath fp = Filename.concat (get_tmpdir ()) fp
 let () =
   if not (Sys.file_exists (get_tmpdir ())) then Unix.mkdir (get_tmpdir ()) 0o700
 
-let with_in f fp =
-  let ic = open_in fp in
-  let r = try f ic with xc -> close_in ic; raise xc in
-  close_in ic; r
-
-let with_out f fp =
-  let oc = open_out fp in
-  let r = try f oc with xc -> close_out oc; raise xc in
-  close_out oc; r
-
 let openssl cmd args =
   let config = get_capath "openssl.cnf" in
   let argv = Array.of_list ("openssl" :: cmd :: "-config" :: config :: args) in
@@ -42,14 +32,14 @@ let openssl cmd args =
   | Unix.WEXITED 0 -> Lwt.return ()
   | st -> Lwt.fail (Openssl_failed st)
 
-let save_spkac comps = with_out
+let save_spkac comps fp = Lwt_io.with_file Lwt_io.output fp
   begin fun oc ->
     let comp_counters = Hashtbl.create 8 in
-    List.iter
+    Lwt_list.iter_s
       begin fun (k, v) ->
 	let i = try Hashtbl.find comp_counters k with Not_found -> 0 in
-	fprintf oc "%d.%s=%s\n" i k v;
-	Hashtbl.replace comp_counters k (i + 1)
+	Hashtbl.replace comp_counters k (i + 1);
+	Lwt_io.fprintf oc "%d.%s=%s\n" i k v
       end
       comps
   end
@@ -58,7 +48,7 @@ let sign_spkac ?(days = 365) request_id comps =
   let workdir = get_tmppath request_id in
   if not (Sys.file_exists workdir) then Unix.mkdir workdir 0o700;
   let spkac_path = Filename.concat workdir "inhclient.spkac" in
-  save_spkac comps spkac_path;
+  save_spkac comps spkac_path >>
   let cert_path = Filename.concat workdir "inhclient.pem" in
   openssl "ca" ["-days"; string_of_int days; "-notext"; "-batch";
 	        "-spkac"; spkac_path; "-out"; cert_path] >>
