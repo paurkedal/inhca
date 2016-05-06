@@ -41,7 +41,7 @@ let authorize_admin () =
   | Some h ->
     let ri = Eliom_request_info.get_ri () in
     let frame = Ocsigen_extensions.Ocsigen_request_info.http_frame ri in
-    lwt user =
+    let%lwt user =
       try Lwt.return (Ocsigen_headers.find h frame)
       with Not_found -> http_error 500 "Missing authentication header." in
     if List.mem user Inhca_config.auth_admins_cp#get

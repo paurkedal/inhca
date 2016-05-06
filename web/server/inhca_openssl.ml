@@ -28,7 +28,7 @@ let () =
 let openssl cmd args =
   let config = get_capath "openssl.cnf" in
   let argv = Array.of_list ("openssl" :: cmd :: "-config" :: config :: args) in
-  match_lwt Lwt_process.exec ("openssl", argv) with
+  match%lwt Lwt_process.exec ("openssl", argv) with
   | Unix.WEXITED 0 -> Lwt.return ()
   | st -> Lwt.fail (Openssl_failed st)
 

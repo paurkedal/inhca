@@ -14,12 +14,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-{shared{
+[%%shared
   open Eliom_content.Html5
   open Inhca_data
   open Unprime_list
   open Unprime_option
-}}
+]
 
 open Inhca_services
 
@@ -29,7 +29,7 @@ module Main_app =
 let main_service =
   Eliom_service.App.service ~path:["admin"] ~get_params:Eliom_parameter.unit ()
 
-{client{
+[%%client
 
   let tds_of_request request_link delete_handler req =
     let render_step = function
@@ -59,7 +59,7 @@ let main_service =
         compare r0.request_id r1.request_id
     end)
 
-}}
+]
 
 let main_handler () () =
   Inhca_tools.authorize_admin () >>
@@ -67,19 +67,19 @@ let main_handler () () =
   let cn_input = D.input ~a:[D.a_input_type `Text] () in
   let email_input = D.input ~a:[D.a_input_type `Text] () in
 
-  let add_handler = {{fun ev ->
-    let cn_input = To_dom.of_input %cn_input in
-    let email_input = To_dom.of_input %email_input in
-    let cn = Js.to_string cn_input##value in
-    let email = Js.to_string email_input##value in
+  let add_handler = [%client fun ev ->
+    let cn_input = To_dom.of_input ~%cn_input in
+    let email_input = To_dom.of_input ~%email_input in
+    let cn = Js.to_string cn_input##.value in
+    let email = Js.to_string email_input##.value in
     if cn <> "" then begin
-      cn_input##value <- Js.string "";
-      email_input##value <- Js.string "";
+      cn_input##.value := Js.string "";
+      email_input##.value := Js.string "";
       Lwt.async (fun () ->
-        Eliom_client.call_ocaml_service ~service:%create_request_service
+        Eliom_client.call_ocaml_service ~service:~%create_request_service
           () (cn, email))
     end
-  }} in
+  ] in
   let add_button =
     D.button ~a:[D.a_onclick add_handler; D.a_button_type `Button]
              [D.pcdata "add"] in
@@ -91,19 +91,19 @@ let main_handler () () =
             D.td [cn_input]; D.td [email_input];
             D.td [add_button]]
     ] in
-  ignore {unit{
+  ignore [%client
 
     let static_row_count = 2 in
 
     let delete_handler req (ev : Dom_html.mouseEvent Js.t) =
       (Js.Unsafe.coerce (Dom.eventTarget ev)
-        :> Dom_html.inputElement Js.t)##disabled <- Js._true;
+        :> Dom_html.inputElement Js.t)##.disabled := Js._true;
       Lwt.async (fun () ->
-        Eliom_client.call_ocaml_service ~service:%delete_request_service ()
+        Eliom_client.call_ocaml_service ~service:~%delete_request_service ()
           (req.request_id, (req.request_cn, req.request_email))) in
 
     let request_link req =
-      D.a ~service:%Inhca_public.keygen_service [D.pcdata req.request_id]
+      D.a ~service:~%Inhca_public.keygen_service [D.pcdata req.request_id]
           req.request_id in
 
     Lwt.async_exception_hook := begin fun xc ->
@@ -111,9 +111,9 @@ let main_handler () () =
     end;
 
     Lwt.ignore_result begin
-      let req_table_elem = To_dom.of_table %req_table in
-      lwt request_list =
-        Eliom_client.call_ocaml_service ~service:%list_requests_service () () in
+      let req_table_elem = To_dom.of_table ~%req_table in
+      let%lwt request_list =
+        Eliom_client.call_ocaml_service ~service:~%list_requests_service () () in
       let request_set =
         ref (List.fold Request_set.add request_list Request_set.empty) in
 
@@ -144,18 +144,18 @@ let main_handler () () =
               request_set := Request_set.add req !request_set;
               req_table_elem##insertRow (static_row_count + i)
             | true, i ->
-              Js.Opt.get (req_table_elem##rows##item (static_row_count + i))
+              Js.Opt.get (req_table_elem##.rows##item (static_row_count + i))
                          (fun () -> failwith "Js.Opt.get") in
           List.iter
             (fun cell ->
               ignore (row##appendChild((To_dom.of_td cell :> Dom.node Js.t))))
             (tds_of_request request_link delete_handler req) in
       Lwt.async
-        (fun () -> Lwt_stream.iter update (Eliom_bus.stream %edit_bus));
+        (fun () -> Lwt_stream.iter update (Eliom_bus.stream ~%edit_bus));
 
       Lwt.return_unit
     end
-  }};
+  ];
   Lwt.return
     (Inhca_tools.F.page ~title:"Pending Certificate Requests" [req_table])
 

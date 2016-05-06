@@ -16,7 +16,7 @@
 
 open Printf
 
-{shared{
+[%%shared
   type request_id = int * int
 
   type request_step =
@@ -24,7 +24,7 @@ open Printf
     | `moderate
     | `validate_email
     | `fetch_certificate ]
-    deriving (Json)
+    [@@deriving json]
 
   type request = {
     request_id : string;
@@ -38,19 +38,19 @@ open Printf
     request_moderation_time : float option;
     request_email_validation_time : float option;
     *)
-  } deriving (Json)
+  } [@@deriving json]
 
   type edit_message =
     [ `remove of request
     | `add of request ]
-    deriving (Json)
-}}
+    [@@deriving json]
+]
 
-{server{
+[%%server
   let request_table : request Ocsipersist.table =
     Ocsipersist.open_table "requests"
 
-  let edit_bus = Eliom_bus.create Json.t<edit_message>
+  let edit_bus = Eliom_bus.create [%json: edit_message]
 
   let fresh_request_id () =
     String.map (function '/' -> '-' | c -> c)
@@ -63,4 +63,4 @@ open Printf
           | `add req -> Ocsipersist.add request_table req.request_id req
           | `remove req -> Ocsipersist.remove request_table req.request_id)
         (Eliom_bus.stream edit_bus))
-}}
+]
