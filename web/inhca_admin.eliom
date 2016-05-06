@@ -21,13 +21,10 @@
   open Unprime_option
 ]
 
-open Inhca_services
+open Inhca_admin_services
 
 module Main_app =
   Eliom_registration.App (struct let application_name = "admin" end)
-
-let main_service =
-  Eliom_service.App.service ~path:["admin"] ~get_params:Eliom_parameter.unit ()
 
 [%%client
 
@@ -61,7 +58,7 @@ let main_service =
 
 ]
 
-let main_handler () () =
+let admin_handler () () =
   Inhca_tools.authorize_admin () >>
 
   let cn_input = D.input ~a:[D.a_input_type `Text] () in
@@ -160,4 +157,4 @@ let main_handler () () =
     (Inhca_tools.F.page ~title:"Pending Certificate Requests" [req_table])
 
 let () =
-  Main_app.register ~service:main_service main_handler
+  Main_app.register ~service:admin_service admin_handler

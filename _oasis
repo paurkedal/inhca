@@ -14,11 +14,11 @@ Library inhca
   Path: web
   Modules:
     server/Inhca_admin,
+    server/Inhca_admin_services,
     server/Inhca_config,
     server/Inhca_data,
     server/Inhca_openssl,
     server/Inhca_public,
-    server/Inhca_services,
     server/Inhca_tools
   BuildDepends:
     config-file,
