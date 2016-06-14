@@ -1,0 +1,11 @@
+description = "In-House CA"
+version = "%%VERSION_NUM%%"
+requires = "
+  calendar config-file eliom.server
+  ppx_deriving.runtime prime prime.unstable
+"
+archive(byte) = "inhca.cma"
+archive(native) = "inhca.cmxa"
+plugin(byte) = "inhca.cma"
+plugin(native) = "inhca.cmxs"
+exists_if = "inhca.cma"

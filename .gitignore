@@ -1,8 +1,4 @@
-/Makefile
 /_build
 /_tools
 /_var
-/configure
-/setup.data
-/setup.log
-/setup.ml
+/inhca.install
