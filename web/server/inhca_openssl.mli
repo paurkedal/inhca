@@ -36,3 +36,18 @@ val sign_spkac : ?days: int -> string -> (string * string) list -> string Lwt.t
 
     @param days The number of days the certificate will be valid, 365 by
     default. *)
+
+type issued_cert_state = [`Revoked | `Expired | `Valid]
+(** The state of an issued certificate. *)
+
+type issued_cert_info = {
+  ici_state : issued_cert_state;
+  ici_expired : CalendarLib.Calendar.t;
+  ici_revoked : CalendarLib.Calendar.t option;
+  ici_serial : int;
+  ici_dn : string;
+}
+(** Information about an issued certificate. *)
+
+val load_index : unit -> issued_cert_info Lwt_stream.t
+(** The current index.txt entries of the CA. *)

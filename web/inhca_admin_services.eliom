@@ -55,3 +55,7 @@ let delete_request_service =
 
 let admin_service =
   Eliom_service.App.service ~path:["admin"] ~get_params:Eliom_parameter.unit ()
+
+let admin_certificates_service =
+  Eliom_service.App.service ~path:["admin"; "certificates"]
+                            ~get_params:Eliom_parameter.unit ()
