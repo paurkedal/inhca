@@ -84,7 +84,7 @@ let signing_handler request_id spkac =
   try
     let%lwt req = Ocsipersist.find request_table request_id in
     Eliom_bus.write edit_bus (`remove req) >>
-    let spkac = String.filter (not *< Char.is_space) spkac in
+    let spkac = String.filter (not <@ Char.is_space) spkac in
     let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn in
     let%lwt cert = Inhca_openssl.sign_spkac request_id spkac_req in
     Eliom_registration.File.send ~content_type:"application/x-x509-user-cert"
