@@ -6,7 +6,7 @@ homepage: "https://github.com/paurkedal/inhca/"
 bug-reports: "https://github.com/paurkedal/inhca/issues"
 dev-repo: "https://github.com/paurkedal/inhca.git"
 license: "GPL-3"
-build: [ocaml "pkg/pkg.ml" "build" "--pinned" "%{pinned}%"]
+build: ["ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%"]
 depends: [
   "adpkg" {build}
   "config-file"
