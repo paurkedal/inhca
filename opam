@@ -11,6 +11,7 @@ depends: [
   "adpkg" {build}
   "config-file"
   "eliom"
+  "ocamlbuild-eliom-dev" {build}
   "ocamlfind" {build}
   "prime"
   "topkg" {build}
