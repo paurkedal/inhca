@@ -1,5 +1,7 @@
-# Change Log
+[v0.3.0] - 2016-09-06
+---------------------
 
-## [Unreleased]
+* Internal improvements including update to Eliom 5.0 and switching build
+  system to topkg.
 
-[Unreleased]: https://github.com/paurkedal/inhca/compare/0.2...HEAD
+[v0.3.0]: https://github.com/paurkedal/inhca/compare/v0.2.0...v0.3.0
