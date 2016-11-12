@@ -16,15 +16,16 @@
 
 [%%shared
   open Eliom_content.Html5
+  open Inhca_admin_services
   open Inhca_data
   open Unprime_list
   open Unprime_option
 ]
 
-open Inhca_admin_services
-
 module Main_app =
   Eliom_registration.App (struct let application_name = "admin" end)
+
+let ignore_cv (x : unit client_value) = ignore x
 
 [%%client
 
@@ -65,15 +66,15 @@ let admin_handler () () =
   let email_input = D.input ~a:[D.a_input_type `Text] () in
 
   let add_handler = [%client fun ev ->
-    let cn_input = To_dom.of_input ~%cn_input in
-    let email_input = To_dom.of_input ~%email_input in
+    let cn_input = To_dom.of_input ~%(cn_input : [`Input] elt) in
+    let email_input = To_dom.of_input ~%(email_input : [`Input] elt) in
     let cn = Js.to_string cn_input##.value in
     let email = Js.to_string email_input##.value in
     if cn <> "" then begin
       cn_input##.value := Js.string "";
       email_input##.value := Js.string "";
       Lwt.async (fun () ->
-        Eliom_client.call_ocaml_service ~service:~%create_request_service
+        Eliom_client.call_ocaml_service ~service:create_request_service
           () (cn, email))
     end
   ] in
@@ -88,7 +89,7 @@ let admin_handler () () =
             D.td [cn_input]; D.td [email_input];
             D.td [add_button]]
     ] in
-  ignore [%client
+  ignore_cv [%client
 
     let static_row_count = 2 in
 
@@ -96,11 +97,11 @@ let admin_handler () () =
       (Js.Unsafe.coerce (Dom.eventTarget ev)
         :> Dom_html.inputElement Js.t)##.disabled := Js._true;
       Lwt.async (fun () ->
-        Eliom_client.call_ocaml_service ~service:~%delete_request_service ()
+        Eliom_client.call_ocaml_service ~service:delete_request_service ()
           (req.request_id, (req.request_cn, req.request_email))) in
 
     let request_link req =
-      D.a ~service:~%Inhca_public.keygen_service [D.pcdata req.request_id]
+      D.a ~service:Inhca_public.keygen_service [D.pcdata req.request_id]
           req.request_id in
 
     Lwt.async_exception_hook := begin fun xc ->
@@ -108,9 +109,9 @@ let admin_handler () () =
     end;
 
     Lwt.ignore_result begin
-      let req_table_elem = To_dom.of_table ~%req_table in
+      let req_table_elem = To_dom.of_table ~%(req_table : [`Table] elt) in
       let%lwt request_list =
-        Eliom_client.call_ocaml_service ~service:~%list_requests_service () () in
+        Eliom_client.call_ocaml_service ~service:list_requests_service () () in
       let request_set =
         ref (List.fold Request_set.add request_list Request_set.empty) in
 

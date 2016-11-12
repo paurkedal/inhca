@@ -14,8 +14,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-[%%shared.start]
-
 open Inhca_data
 
 let list_requests_service =
@@ -25,6 +23,15 @@ let list_requests_service =
     (fun () () ->
       Ocsipersist.fold_step (fun k r rs -> Lwt.return (r :: rs))
                             request_table [])
+let%client list_requests_service =
+  ~%(list_requests_service :
+      (unit, unit,
+       Eliom_service.get_service_kind,
+       Eliom_service.non_attached_kind,
+       Eliom_service.service_kind,
+       _, _, _,
+       Eliom_service.registrable, _)
+      Eliom_service.service)
 
 let create_request_service =
   Eliom_registration.Ocaml.register_post_coservice'
@@ -38,6 +45,15 @@ let create_request_service =
         request_pending = [`generate_key; `fetch_certificate];
       } in
       Eliom_bus.write edit_bus (`add req))
+let%client create_request_service =
+  ~%(create_request_service :
+      (unit, string * string,
+       Eliom_service.post_service_kind,
+       Eliom_service.non_attached_kind,
+       Eliom_service.service_kind,
+       _, _, _,
+       Eliom_service.registrable, _)
+      Eliom_service.service)
 
 let delete_request_service =
   Eliom_registration.Ocaml.register_post_coservice'
@@ -52,6 +68,15 @@ let delete_request_service =
         request_pending = []; (* dummy for `remove *)
       } in
       Eliom_bus.write edit_bus (`remove req))
+let%client delete_request_service =
+  ~%(delete_request_service :
+      (_, _,
+       Eliom_service.post_service_kind,
+       Eliom_service.non_attached_kind,
+       Eliom_service.service_kind,
+       _, _, _,
+       Eliom_service.registrable, _)
+      Eliom_service.service)
 
 let admin_service =
   Eliom_service.App.service ~path:["admin"] ~get_params:Eliom_parameter.unit ()

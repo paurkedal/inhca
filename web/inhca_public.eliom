@@ -36,6 +36,12 @@ let keygen_service =
   Eliom_service.Http.service
     ~path:["req"]
     ~get_params:Eliom_parameter.(suffix (string "request_id")) ()
+let%client keygen_service =
+  ~%(keygen_service :
+      (string, unit,
+       Eliom_service.get_service_kind, Eliom_service.attached_kind, [`Service],
+       _, _, _, Eliom_service.registrable, Eliom_service.http_service)
+      Eliom_service.service)
 
 let signing_service =
   Eliom_service.Http.post_service
