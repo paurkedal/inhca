@@ -15,20 +15,28 @@
  *)
 
 [%%shared
-  open Eliom_content.Html5
+  open Eliom_content.Html
   open Inhca_admin_services
   open Inhca_data
   open Unprime_list
   open Unprime_option
 ]
 
-module Main_app =
-  Eliom_registration.App (struct let application_name = "admin" end)
+module Main_app = Eliom_registration.App (struct
+  let application_name = "admin"
+  let global_data_path = None
+end)
 
-let ignore_cv (x : unit client_value) = ignore x
+let () = try Lwt_log.load_rules (Sys.getenv "LWT_LOG") with Not_found -> ()
+let lwt_log_js_rules =
+  try Some (Sys.getenv "LWT_LOG_JS") with Not_found ->
+  try Some (Sys.getenv "LWT_LOG") with Not_found ->
+  None
+let%client () = Option.iter Lwt_log_js.load_rules ~%lwt_log_js_rules
+
+let ignore_cv (x : unit Eliom_client_value.t) = ignore x
 
 [%%client
-
   let tds_of_request request_link delete_handler req =
     let render_step = function
       | `generate_key -> D.pcdata "K"
@@ -62,8 +70,10 @@ let ignore_cv (x : unit client_value) = ignore x
 let admin_handler () () =
   Inhca_tools.authorize_admin () >>
 
-  let cn_input = D.input ~a:[D.a_input_type `Text] () in
-  let email_input = D.input ~a:[D.a_input_type `Text] () in
+  let cn_input : Html_types.input elt =
+    D.input ~a:[D.a_input_type `Text] () in
+  let email_input : Html_types.input elt =
+    D.input ~a:[D.a_input_type `Text] () in
 
   let add_handler = [%client fun ev ->
     let cn_input = To_dom.of_input ~%(cn_input : [`Input] elt) in
@@ -74,8 +84,8 @@ let admin_handler () () =
       cn_input##.value := Js.string "";
       email_input##.value := Js.string "";
       Lwt.async (fun () ->
-        Eliom_client.call_ocaml_service ~service:create_request_service
-          () (cn, email))
+        Lwt_log_js.error_f "Creating link for %s <%s>." cn email >>
+        create_request (cn, email))
     end
   ] in
   let add_button =
@@ -97,21 +107,16 @@ let admin_handler () () =
       (Js.Unsafe.coerce (Dom.eventTarget ev)
         :> Dom_html.inputElement Js.t)##.disabled := Js._true;
       Lwt.async (fun () ->
-        Eliom_client.call_ocaml_service ~service:delete_request_service ()
-          (req.request_id, (req.request_cn, req.request_email))) in
+        delete_request (req.request_id, req.request_cn, req.request_email)) in
 
     let request_link req =
       D.a ~service:Inhca_public.keygen_service [D.pcdata req.request_id]
           req.request_id in
 
-    Lwt.async_exception_hook := begin fun xc ->
-      Eliom_lib.error "Inhca_ca client: %s" (Printexc.to_string xc)
-    end;
-
     Lwt.ignore_result begin
-      let req_table_elem = To_dom.of_table ~%(req_table : [`Table] elt) in
-      let%lwt request_list =
-        Eliom_client.call_ocaml_service ~service:list_requests_service () () in
+      let req_table_elem =
+        To_dom.of_table ~%(req_table : Html_types.table elt) in
+      let%lwt request_list = list_requests () in
       let request_set =
         ref (List.fold Request_set.add request_list Request_set.empty) in
 

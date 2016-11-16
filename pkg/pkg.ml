@@ -13,6 +13,7 @@ let build_cmd c os targets =
         % "-use-ocamlfind"
         % "-plugin-tag" % "package(ocamlbuild-eliom-dev)"
         % "-build-dir" % build_dir
+        %% on (Conf.debug c) (of_list ["-tag"; "debug"])
         %% of_list targets)
 
 let build = Pkg.build ~cmd:build_cmd ()

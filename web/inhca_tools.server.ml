@@ -21,13 +21,13 @@ module F = struct
 
   let page ~title contents =
     (Eliom_tools.F.html ~title ~css:[["css"; "inhca.css"]]
-      (Html5.F.body (Html5.F.h1 [Html5.F.pcdata title] :: contents)))
+      (Html.F.body (Html.F.h1 [Html.F.pcdata title] :: contents)))
 
   let send_error ~code msg =
     let hdr = sprintf "Error %d" code in
-    Eliom_registration.Html5.send ~code
+    Eliom_registration.Html.send ~code
       (Eliom_tools.F.html ~title:hdr ~css:[["css"; "inhca.css"]]
-        Html5.F.(body [h1 [pcdata hdr]; p [pcdata msg]]))
+        Html.F.(body [h1 [pcdata hdr]; p [pcdata msg]]))
 
 end
 
@@ -45,5 +45,5 @@ let authorize_admin () =
       try Lwt.return (Ocsigen_headers.find h frame)
       with Not_found -> http_error 500 "Missing authentication header." in
     if List.mem user Inhca_config.auth_admins_cp#get
-    then Lwt.return_unit
+    then Lwt_log.info_f "Authorized %s." user
     else http_error 403 "Admin access required."

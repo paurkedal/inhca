@@ -47,7 +47,7 @@ open Printf
 ]
 
 [%%server
-  let request_table : request Ocsipersist.table =
+  let%lwt request_table : request Ocsipersist.table Lwt.t =
     Ocsipersist.open_table "requests"
 
   let edit_bus = Eliom_bus.create [%json: edit_message]

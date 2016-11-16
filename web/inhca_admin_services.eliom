@@ -16,73 +16,47 @@
 
 open Inhca_data
 
-let list_requests_service =
-  Eliom_registration.Ocaml.register_coservice'
-    (* ~csrf_safe:true *)
-    ~get_params:Eliom_parameter.unit
-    (fun () () ->
-      Ocsipersist.fold_step (fun k r rs -> Lwt.return (r :: rs))
-                            request_table [])
-let%client list_requests_service =
-  ~%(list_requests_service :
-      (unit, unit,
-       Eliom_service.get_service_kind,
-       Eliom_service.non_attached_kind,
-       Eliom_service.service_kind,
-       _, _, _,
-       Eliom_service.registrable, _)
-      Eliom_service.service)
-
-let create_request_service =
-  Eliom_registration.Ocaml.register_post_coservice'
-    ~post_params:Eliom_parameter.(string "cn" ** string "email")
-    (fun () (cn, email) ->
-      let req = {
-        request_id = fresh_request_id ();
-        request_cn = cn;
-        request_email = email;
-        request_spkac = None;
-        request_pending = [`generate_key; `fetch_certificate];
-      } in
-      Eliom_bus.write edit_bus (`add req))
-let%client create_request_service =
-  ~%(create_request_service :
-      (unit, string * string,
-       Eliom_service.post_service_kind,
-       Eliom_service.non_attached_kind,
-       Eliom_service.service_kind,
-       _, _, _,
-       Eliom_service.registrable, _)
-      Eliom_service.service)
-
-let delete_request_service =
-  Eliom_registration.Ocaml.register_post_coservice'
-    ~post_params:Eliom_parameter.(string "request_id" **
-                                  string "cn" ** string "email")
-    (fun () (request_id, (cn, email)) ->
-      let req = {
-        request_id = request_id;
-        request_cn = cn;
-        request_email = email;
-        request_spkac = None; (* dummy for `remove *)
-        request_pending = []; (* dummy for `remove *)
-      } in
-      Eliom_bus.write edit_bus (`remove req))
-let%client delete_request_service =
-  ~%(delete_request_service :
-      (_, _,
-       Eliom_service.post_service_kind,
-       Eliom_service.non_attached_kind,
-       Eliom_service.service_kind,
-       _, _, _,
-       Eliom_service.registrable, _)
-      Eliom_service.service)
-
 let admin_service =
-  Eliom_service.App.service ~path:["admin"] ~get_params:Eliom_parameter.unit ()
+  let open Eliom_service in
+  let get = Eliom_parameter.unit in
+  create ~meth:(Get get) ~path:(Path ["admin"; ""]) ()
+let%client admin_service = ~%admin_service
 
-(*
-let admin_certificates_service =
-  Eliom_service.App.service ~path:["admin"; "certificates"]
-                            ~get_params:Eliom_parameter.unit ()
-*)
+let admin_server_function json f =
+  Eliom_client.server_function json
+    (fun args -> Inhca_tools.authorize_admin () >> f args)
+
+let list_requests () =
+  Ocsipersist.fold_step (fun k r rs -> Lwt.return (r :: rs))
+                        request_table []
+
+let%client list_requests =
+  ~%(admin_server_function [%json: unit] list_requests)
+
+let create_request (cn, email) =
+  Lwt_log.info_f "Creating requset for %s <%s>." cn email >>
+  let req = {
+    request_id = fresh_request_id ();
+    request_cn = cn;
+    request_email = email;
+    request_spkac = None;
+    request_pending = [`generate_key; `fetch_certificate];
+  } in
+  Eliom_bus.write edit_bus (`add req)
+
+let%client create_request =
+  ~%(admin_server_function [%json: string * string] create_request)
+
+let delete_request (request_id, cn, email) =
+  Lwt_log.info_f "Deleting requset for %s <%s>." cn email >>
+  let req = {
+    request_id = request_id;
+    request_cn = cn;
+    request_email = email;
+    request_spkac = None; (* dummy for `remove *)
+    request_pending = []; (* dummy for `remove *)
+  } in
+  Eliom_bus.write edit_bus (`remove req)
+
+let%client delete_request =
+  ~%(admin_server_function [%json: string * string * string] delete_request)

@@ -14,7 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Eliom_content.Html5
+open Eliom_content.Html
 open Inhca_data
 open Unprime
 open Unprime_char
@@ -28,25 +28,18 @@ let base_dn =
     (String.chop_affix "," Inhca_config.subject_base_dn#get)
 
 let main_service =
-  Eliom_service.Http.service
-    ~path:[]
-    ~get_params:Eliom_parameter.unit ()
+  let get = Eliom_parameter.unit in
+  Eliom_service.(create ~path:(Path []) ~meth:(Get get) ())
 
 let keygen_service =
-  Eliom_service.Http.service
-    ~path:["req"]
-    ~get_params:Eliom_parameter.(suffix (string "request_id")) ()
-let%client keygen_service =
-  ~%(keygen_service :
-      (string, unit,
-       Eliom_service.get_service_kind, Eliom_service.attached_kind, [`Service],
-       _, _, _, Eliom_service.registrable, Eliom_service.http_service)
-      Eliom_service.service)
+  let get = Eliom_parameter.(suffix (string "requset_id")) in
+  Eliom_service.(create ~path:(Path ["req"]) ~meth:(Get get) ())
+let%client keygen_service = ~%keygen_service
 
 let signing_service =
-  Eliom_service.Http.post_service
-    ~fallback:keygen_service
-    ~post_params:Eliom_parameter.(string "spkac") ()
+  let get = Eliom_parameter.(suffix (string "request_id")) in
+  let post = Eliom_parameter.(string "spkac") in
+  Eliom_service.(create ~path:(Path ["req"]) ~meth:(Post (get, post)) ())
 
 let main_handler () () =
   Lwt.return F.(Inhca_tools.F.page ~title:"Inhca" [
@@ -101,6 +94,6 @@ let signing_handler request_id spkac =
 let () =
   let open Eliom_registration in
   let content_type = "text/html" in
-  Html5.register ~content_type ~service:main_service main_handler;
-  Html5.register ~content_type ~service:keygen_service keygen_handler;
+  Html.register ~content_type ~service:main_service main_handler;
+  Html.register ~content_type ~service:keygen_service keygen_handler;
   Any.register ~service:signing_service signing_handler
