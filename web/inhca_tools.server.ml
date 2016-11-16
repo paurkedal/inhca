@@ -17,6 +17,8 @@
 open Eliom_content
 open Printf
 
+let ignore_cv (x : unit Eliom_client_value.t) = ignore x
+
 module F = struct
 
   let page ~title contents =

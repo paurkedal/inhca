@@ -22,5 +22,5 @@ let () = Pkg.describe ~licenses ~build "inhca" @@ fun c ->
   Ok [
     Pkg.mllib ~api:[] "web/server/inhca.mllib";
     Pkg.share ~dst:"static/css/" "web/static/css/inhca.css";
-    Pkg.share ~dst:"static/" "web/client/admin.js";
+    Pkg.share ~dst:"static/js/" "web/client/inhca.js";
   ]

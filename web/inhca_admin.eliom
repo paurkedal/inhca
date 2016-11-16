@@ -22,20 +22,6 @@
   open Unprime_option
 ]
 
-module Main_app = Eliom_registration.App (struct
-  let application_name = "admin"
-  let global_data_path = None
-end)
-
-let () = try Lwt_log.load_rules (Sys.getenv "LWT_LOG") with Not_found -> ()
-let lwt_log_js_rules =
-  try Some (Sys.getenv "LWT_LOG_JS") with Not_found ->
-  try Some (Sys.getenv "LWT_LOG") with Not_found ->
-  None
-let%client () = Option.iter Lwt_log_js.load_rules ~%lwt_log_js_rules
-
-let ignore_cv (x : unit Eliom_client_value.t) = ignore x
-
 [%%client
   let tds_of_request request_link delete_handler req =
     let render_step = function
@@ -99,7 +85,7 @@ let admin_handler () () =
             D.td [cn_input]; D.td [email_input];
             D.td [add_button]]
     ] in
-  ignore_cv [%client
+  Inhca_tools.ignore_cv [%client
 
     let static_row_count = 2 in
 
@@ -163,4 +149,4 @@ let admin_handler () () =
     (Inhca_tools.F.page ~title:"Pending Certificate Requests" [req_table])
 
 let () =
-  Main_app.register ~service:admin_service admin_handler
+  Inhca_app.register ~service:admin_service admin_handler
