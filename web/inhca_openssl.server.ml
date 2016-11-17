@@ -77,6 +77,11 @@ module Issue = struct
   let serial ici = ici.serial
   let dn ici = ici.dn
 
+  let string_of_state = function
+   | `Valid -> "valid"
+   | `Revoked -> "revoked"
+   | `Expired -> "expired"
+
   let state_of_string = function
    | "V" -> `Valid
    | "R" -> `Revoked
@@ -85,7 +90,7 @@ module Issue = struct
 
   let parse_index_line s =
     match Prime_string.chop_affix "\t" s with
-     | [s_state; s_expired; s_revoked; s_serial; s_dn] ->
+     | [s_state; s_expired; s_revoked; s_serial; _; s_dn] ->
         Lwt.wrap @@ fun () -> {
           state = state_of_string s_state;
           expired = time_of_string s_expired;

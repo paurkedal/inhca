@@ -18,6 +18,8 @@
   open Eliom_content.Html
   open Inhca_admin_services
   open Inhca_data
+  open Inhca_prereq
+  open Printf
   open Unprime_list
   open Unprime_option
 ]
@@ -145,8 +147,34 @@ let admin_handler () () =
       Lwt.return_unit
     end
   ];
+  let issue_header_tr =
+    F.tr [
+      F.th [F.pcdata "SN"];
+      F.th [F.pcdata "State"];
+      F.th [F.pcdata "Expired"];
+      F.th [F.pcdata "Revoked"];
+      F.th [F.pcdata "DN"];
+    ] in
+  let issue_tr issue =
+    let open Inhca_openssl in
+    F.tr [
+      F.td [F.pcdata (sprintf "%02x" (Issue.serial issue))];
+      F.td [F.pcdata (Issue.string_of_state (Issue.state issue))];
+      F.td [F.pcdata (Time_format.to_string (Issue.expired issue))];
+      F.td (match Issue.revoked issue with
+            | None -> []
+            | Some d -> [F.pcdata (Time_format.to_string d)]);
+      F.td [F.pcdata (Issue.dn issue)];
+    ] in
+  let%lwt issue_trs = Lwt_stream.to_list @@
+    Lwt_stream.map issue_tr (Inhca_openssl.Issue.load_all ()) in
   Lwt.return
-    (Inhca_tools.F.page ~title:"Pending Certificate Requests" [req_table])
+    (Inhca_tools.F.page ~title:"Pending Certificate Requests" [
+      F.h2 [F.pcdata "Pending Requests"];
+      req_table;
+      F.h2 [F.pcdata "Issued Certificates"];
+      F.table ~a:[F.a_class ["std"]] (issue_header_tr :: issue_trs);
+    ])
 
 let () =
   Inhca_app.register ~service:admin_service admin_handler

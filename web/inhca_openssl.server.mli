@@ -32,6 +32,8 @@ val get_tmppath : string -> string
 module Issue : sig
   type state = [`Revoked | `Expired | `Valid]
 
+  val string_of_state : state -> string
+
   type t
   (** Information about an issued certificate. *)
 
