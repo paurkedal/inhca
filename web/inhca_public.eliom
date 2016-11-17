@@ -87,17 +87,22 @@ let keygen_handler = with_request @@ fun request_id req () ->
   ]
 
 let signing_handler = with_request @@ fun request_id req spkac ->
-  Eliom_bus.write edit_bus (`remove req) >>
   let spkac = String.filter (not <@ Char.is_space) spkac in
-  let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn in
-  match%lwt Inhca_openssl.sign_spkac request_id spkac_req with
-   | Ok cert ->
-      Eliom_registration.File.send
-        ~content_type:"application/x-x509-user-cert" cert
-   | Error error ->
-      Inhca_openssl.log_error error >>
-      Inhca_tools.F.send_error ~code:500
-        "Signing failed, please contact site admin."
+  if spkac = "" then
+    Inhca_tools.F.send_error ~code:400
+      "Empty request received, this probably means no <keygen/> support."
+  else begin
+    Eliom_bus.write edit_bus (`remove req) >>
+    let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn in
+    match%lwt Inhca_openssl.sign_spkac request_id spkac_req with
+     | Ok cert ->
+        Eliom_registration.File.send
+          ~content_type:"application/x-x509-user-cert" cert
+     | Error error ->
+        Inhca_openssl.log_error error >>
+        Inhca_tools.F.send_error ~code:500
+          "Signing failed, please contact site admin."
+  end
 
 let () =
   let open Eliom_registration in
