@@ -65,3 +65,9 @@ val sign_spkac : ?days: int -> request_id: string -> (string * string) list ->
       The number of days the certificate will be valid, 365 by default.
     @param request_id
       Used for constructing a temporary path. *)
+
+val revoke_serial : int -> (unit, error) result Lwt.t
+(** [revoke_serial n] revokes the certificate with serial number [n].  *)
+
+val updatedb : unit -> (unit, error) result Lwt.t
+(** [updatedb ()] purges expired certificates from the index. *)

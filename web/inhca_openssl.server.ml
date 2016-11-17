@@ -42,6 +42,8 @@ let log_error (command, pst, msgs) =
 
 let get_cadir () = Filename.concat (Ocsigen_config.get_datadir ()) "CA"
 let get_capath fp = Filename.concat (get_cadir ()) fp
+let get_newcertpath i =
+  Filename.concat (get_capath "newcerts") (sprintf "%02x.pem" i)
 let get_tmpdir () = Filename.concat (Ocsigen_config.get_datadir ()) "tmp"
 let get_tmppath fp = Filename.concat (get_tmpdir ()) fp
 let () =
@@ -167,3 +169,5 @@ let sign_spkac ?(days = 365) ~request_id comps =
    | Ok () -> Lwt.return (Ok cert_path)
    | Error error -> Lwt.return (Error error)
 
+let revoke_serial serial = exec_openssl "ca" ["-revoke"; get_newcertpath serial]
+let updatedb () = exec_openssl "ca" ["-updatedb"]

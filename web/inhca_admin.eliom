@@ -16,6 +16,7 @@
 
 [%%shared
   open Eliom_content.Html
+  open Lwt.Infix
   open Inhca_admin_services
   open Inhca_data
   open Inhca_prereq
@@ -23,6 +24,34 @@
   open Unprime_list
   open Unprime_option
 ]
+
+let reword_openssl_error = function
+ | Ok () ->
+    Lwt.return (Ok ())
+ | Error error ->
+    Inhca_openssl.log_error error >>
+    Lwt.return (Error "openssl command failed, see log for details.")
+
+let revoke_serial_sf serial =
+  Inhca_tools.authorize_admin () >>
+  Inhca_openssl.revoke_serial serial >>= reword_openssl_error
+
+let%client revoke_serial =
+  ~%(Eliom_client.server_function [%json: int] revoke_serial_sf)
+
+let updatedb_sf () =
+  Inhca_tools.authorize_admin () >>
+  Inhca_openssl.updatedb () >>= reword_openssl_error
+
+let%client updatedb =
+  ~%(Eliom_client.server_function [%json: unit] updatedb_sf)
+
+let%client report_error msg =
+  Dom_html.window##alert (Js.string msg); (* FIXME *)
+  Lwt.return_unit
+
+let%client refresh_page () =
+  Eliom_client.change_page ~service:admin_service ~replace:true () ()
 
 [%%client
   let tds_of_request request_link delete_handler req =
@@ -147,6 +176,14 @@ let admin_handler () () =
       Lwt.return_unit
     end
   ];
+
+  let updatedb_button =
+    let h = fun%client _ -> Lwt.async @@ fun () ->
+      match%lwt updatedb () with
+       | Ok () -> refresh_page ()
+       | Error msg -> report_error msg in
+    F.button ~a:[F.a_button_type `Button; F.a_onclick h] [F.pcdata "update"] in
+
   let issue_header_tr =
     F.tr [
       F.th [F.pcdata "SN"];
@@ -154,20 +191,41 @@ let admin_handler () () =
       F.th [F.pcdata "Expired"];
       F.th [F.pcdata "Revoked"];
       F.th [F.pcdata "DN"];
+      F.td [updatedb_button];
     ] in
+
   let issue_tr issue =
     let open Inhca_openssl in
+
+    let serial = Issue.serial issue in
+    let state = Issue.state issue in
+
+    let control =
+      match state with
+       | `Revoked -> []
+       | `Expired | `Valid ->
+          let h = fun%client _ -> Lwt.async @@ fun () ->
+            match%lwt revoke_serial ~%serial with
+             | Ok () -> refresh_page ()
+             | Error msg -> report_error msg in
+          [F.button ~a:[F.a_button_type `Button; F.a_onclick h]
+                    [F.pcdata "revoke"]] in
+
     F.tr [
-      F.td [F.pcdata (sprintf "%02x" (Issue.serial issue))];
-      F.td [F.pcdata (Issue.string_of_state (Issue.state issue))];
+      F.td [F.pcdata (sprintf "%02x" serial)];
+      F.td [F.pcdata (Issue.string_of_state state)];
       F.td [F.pcdata (Time_format.to_string (Issue.expired issue))];
-      F.td (match Issue.revoked issue with
-            | None -> []
-            | Some d -> [F.pcdata (Time_format.to_string d)]);
+      F.td
+        (match Issue.revoked issue with
+         | None -> []
+         | Some d -> [F.pcdata (Time_format.to_string d)]);
       F.td [F.pcdata (Issue.dn issue)];
+      F.td control;
     ] in
+
   let%lwt issue_trs = Lwt_stream.to_list @@
     Lwt_stream.map issue_tr (Inhca_openssl.Issue.load_all ()) in
+
   Lwt.return
     (Inhca_tools.F.page ~title:"Pending Certificate Requests" [
       F.h2 [F.pcdata "Pending Requests"];
