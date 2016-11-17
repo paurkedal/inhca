@@ -16,6 +16,10 @@
 
 (** Interface to openssl commands. *)
 
+type error = Lwt_process.command * Unix.process_status * string list
+
+val log_error : error -> unit Lwt.t
+
 val get_cadir : unit -> string
 val get_capath : string -> string
 (** Paths to the CA. *)
@@ -24,30 +28,38 @@ val get_tmpdir : unit -> string
 val get_tmppath : string -> string
 (** Paths to use for temporary files. *)
 
-val openssl : string -> string list -> unit Lwt.t
-(** [openssl cmd args] runs the openssl sub-command [cmd] with the given
-    arguments along with a -config option pointing to the configuration file
-    in the CA directory. *)
+(** Read-only interface to the index.txt file of the CA. *)
+module Issue : sig
+  type state = [`Revoked | `Expired | `Valid]
 
-val sign_spkac : ?days: int -> string -> (string * string) list -> string Lwt.t
-(** [sign_spkac request_id spkac] signs the SPKAC (Signed Public Key and
-    Challenge) given by [spkac] and returns the certificate.  The [request_id]
-    is only used for a temporary path.
+  type t
+  (** Information about an issued certificate. *)
 
-    @param days The number of days the certificate will be valid, 365 by
-    default. *)
+  val state : t -> state
+  (** The current state of an issued certificate. *)
 
-type issued_cert_state = [`Revoked | `Expired | `Valid]
-(** The state of an issued certificate. *)
+  val expired : t -> CalendarLib.Calendar.t
+  (** The expiration time of the certificate. *)
 
-type issued_cert_info = {
-  ici_state : issued_cert_state;
-  ici_expired : CalendarLib.Calendar.t;
-  ici_revoked : CalendarLib.Calendar.t option;
-  ici_serial : int;
-  ici_dn : string;
-}
-(** Information about an issued certificate. *)
+  val revoked : t -> CalendarLib.Calendar.t option
+  (** The time the certificate was revoked if any. *)
 
-val load_index : unit -> issued_cert_info Lwt_stream.t
-(** The current index.txt entries of the CA. *)
+  val serial : t -> int
+  (** The serial number of the certificate. *)
+
+  val dn : t -> string
+  (** The distinguished name of the certificate. *)
+
+  val load_all : unit -> t Lwt_stream.t
+  (** The current index.txt entries of the CA. *)
+end
+
+val sign_spkac : ?days: int -> request_id: string -> (string * string) list ->
+                 (string, error) result Lwt.t
+(** [sign_spkac spkac] signs the SPKAC (Signed Public Key and Challenge) given
+    by [spkac] and returns the certificate.
+
+    @param days
+      The number of days the certificate will be valid, 365 by default.
+    @param request_id
+      Used for constructing a temporary path. *)

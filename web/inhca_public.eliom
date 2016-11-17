@@ -16,6 +16,7 @@
 
 open Eliom_content.Html
 open Inhca_data
+open Lwt.Infix
 open Unprime
 open Unprime_char
 open Unprime_option
@@ -46,8 +47,14 @@ let main_handler () () =
     p [pcdata "Nothing to see here."]
   ])
 
-let keygen_handler request_id () =
-  let%lwt req = Ocsipersist.find request_table request_id in
+let with_request f request_id post =
+  try%lwt
+    let%lwt request = Ocsipersist.find request_table request_id in
+    f request_id request post
+  with Not_found ->
+    Inhca_tools.http_error 404 "No such certificate request."
+
+let keygen_handler = with_request @@ fun request_id req () ->
   Lwt.return @@ Inhca_tools.F.page ~title:"Fetch Certificate" [
     F.Form.post_form ~service:signing_service
       (fun spkac -> [
@@ -79,17 +86,18 @@ let keygen_handler request_id () =
       request_id
   ]
 
-let signing_handler request_id spkac =
-  try
-    let%lwt req = Ocsipersist.find request_table request_id in
-    Eliom_bus.write edit_bus (`remove req) >>
-    let spkac = String.filter (not <@ Char.is_space) spkac in
-    let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn in
-    let%lwt cert = Inhca_openssl.sign_spkac request_id spkac_req in
-    Eliom_registration.File.send ~content_type:"application/x-x509-user-cert"
-                                 cert
-  with Not_found ->
-    Inhca_tools.F.send_error ~code:404 "No such certificate request."
+let signing_handler = with_request @@ fun request_id req spkac ->
+  Eliom_bus.write edit_bus (`remove req) >>
+  let spkac = String.filter (not <@ Char.is_space) spkac in
+  let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn in
+  match%lwt Inhca_openssl.sign_spkac request_id spkac_req with
+   | Ok cert ->
+      Eliom_registration.File.send
+        ~content_type:"application/x-x509-user-cert" cert
+   | Error error ->
+      Inhca_openssl.log_error error >>
+      Inhca_tools.F.send_error ~code:500
+        "Signing failed, please contact site admin."
 
 let () =
   let open Eliom_registration in

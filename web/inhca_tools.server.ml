@@ -49,3 +49,32 @@ let authorize_admin () =
     if List.mem user Inhca_config.auth_admins_cp#get
     then Lwt_log.info_f "Authorized %s." user
     else http_error 403 "Admin access required."
+
+module Local_log (Spec : sig val section_name : string end) = struct
+  let section = Lwt_log.Section.make Spec.section_name
+
+  let debug = Lwt_log.debug ~section
+  let debug_f = Lwt_log.debug_f ~section
+  let ign_debug = Lwt_log.ign_debug ~section
+  let ign_debug_f = Lwt_log.ign_debug_f ~section
+  let info = Lwt_log.info ~section
+  let info_f = Lwt_log.info_f ~section
+  let ign_info = Lwt_log.ign_info ~section
+  let ign_info_f = Lwt_log.ign_info_f ~section
+  let notice = Lwt_log.notice ~section
+  let notice_f = Lwt_log.notice_f ~section
+  let ign_notice = Lwt_log.ign_notice ~section
+  let ign_notice_f = Lwt_log.ign_notice_f ~section
+  let warning = Lwt_log.warning ~section
+  let warning_f = Lwt_log.warning_f ~section
+  let ign_warning = Lwt_log.ign_warning ~section
+  let ign_warning_f = Lwt_log.ign_warning_f ~section
+  let error = Lwt_log.debug ~section
+  let error_f = Lwt_log.debug_f ~section
+  let ign_error = Lwt_log.ign_debug ~section
+  let ign_error_f = Lwt_log.ign_error_f ~section
+  let fatal = Lwt_log.debug ~section
+  let fatal_f = Lwt_log.debug_f ~section
+  let ign_fatal = Lwt_log.ign_debug ~section
+  let ign_fatal_f = Lwt_log.ign_fatal_f ~section
+end
