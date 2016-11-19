@@ -1,8 +1,13 @@
 description = "In-House CA"
 version = "%%VERSION_NUM%%"
 requires = "
-  calendar config-file eliom.server
-  ppx_deriving.runtime prime prime.unstable
+  calendar
+  config-file
+  eliom.server
+  fd-send-recv
+  ppx_deriving.runtime
+  prime prime.unstable
+  x509
 "
 archive(byte) = "inhca.cma"
 archive(native) = "inhca.cmxa"

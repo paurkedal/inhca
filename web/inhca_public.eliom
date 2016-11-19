@@ -139,7 +139,7 @@ let issue_spkac_handler = with_request @@ fun request_id req spkac ->
     let error = [F.pcdata
       "Your web browser did not supply a certificate request. \
        This probably means that it does not support <keygen/>. \
-       You may go back to the previous page to try an alternative method."
+       You may try the alternative method."
     ] in
     Eliom_registration.Html.send =<< acquire_handler ~error request_id ()
   else begin
