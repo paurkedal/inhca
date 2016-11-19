@@ -22,3 +22,9 @@ table.std th:first-child, table.std td:first-child {
 table.std th {
 	border-bottom: solid thin #bbccff;
 }
+
+div.error {
+	border: double medium red;
+	padding: 0.5rem 0.5rem;
+	background-color: #fff3f3;
+}

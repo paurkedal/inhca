@@ -126,8 +126,9 @@ let server_generates_form =
     ]
   ]
 
-let acquire_handler = with_request @@ fun request_id request () ->
+let acquire_handler ?(error = []) = with_request @@ fun request_id request () ->
   Lwt.return @@ Inhca_tools.F.page ~title:"Acquire Certificate" [
+    F.div ~a:[F.a_class ["error"]] error;
     keygen_form request request_id;
     server_generates_form request_id;
   ]
@@ -135,10 +136,12 @@ let acquire_handler = with_request @@ fun request_id request () ->
 let issue_spkac_handler = with_request @@ fun request_id req spkac ->
   let spkac = String.filter (not <@ Char.is_space) spkac in
   if spkac = "" then
-    Inhca_tools.F.send_error ~code:400
+    let error = [F.pcdata
       "Your web browser did not supply a certificate request. \
        This probably means that it does not support <keygen/>. \
        You may go back to the previous page to try an alternative method."
+    ] in
+    Eliom_registration.Html.send =<< acquire_handler ~error request_id ()
   else begin
     Eliom_bus.write edit_bus (`remove req) >>
     let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn_tup in
@@ -156,7 +159,8 @@ let issue_pkcs12_handler =
   with_request @@ fun request_id req (password, password') ->
   Nocrypto_entropy_lwt.initialize () >>
   if password <> password' then
-    Inhca_tools.F.send_error ~code:400 "Passwords don't match." else
+    let error = [F.pcdata "Passwords didn't match."] in
+    Eliom_registration.Html.send =<< acquire_handler ~error request_id () else
   Eliom_bus.write edit_bus (`remove req) >>
   let key_size = 4096 in
   let digest = `SHA512 in
