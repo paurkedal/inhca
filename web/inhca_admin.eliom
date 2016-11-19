@@ -127,7 +127,7 @@ let admin_handler () () =
         delete_request (req.request_id, req.request_cn, req.request_email)) in
 
     let request_link req =
-      D.a ~service:Inhca_public.keygen_service [D.pcdata req.request_id]
+      D.a ~service:Inhca_public.acquire_service [D.pcdata req.request_id]
           req.request_id in
 
     Lwt.ignore_result begin

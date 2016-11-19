@@ -71,3 +71,16 @@ val revoke_serial : int -> (unit, error) result Lwt.t
 
 val updatedb : unit -> (unit, error) result Lwt.t
 (** [updatedb ()] purges expired certificates from the index. *)
+
+val sign_pem : ?days: int -> request_id: string -> string ->
+               (string, error) result Lwt.t
+(** [sign_pem request_id csr] signs the given PEM formatted CSR [csr] returning
+    the certificate in PEM format.
+
+    @param request_id
+      Used for constructing a temporary path. *)
+
+val export_pkcs12 :
+  ?name: string -> password: string ->
+  cert: string -> certkey: string ->
+  unit -> (string, error) result Lwt.t

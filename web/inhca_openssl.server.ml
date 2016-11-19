@@ -24,7 +24,10 @@ module Time = CalendarLib.Calendar
 module Time_format = CalendarLib.Printer.Calendar
 
 let string_of_command command =
-  String.concat " " (Array.to_list (snd command))
+  let quoted s =
+    if String.length s > 0 && s.[0] = '-' then s else
+    "\"" ^ String.escaped s ^ "\"" in
+  String.concat " " (List.map quoted (Array.to_list (snd command)))
 
 type error = Lwt_process.command * Unix.process_status * string list
 
@@ -43,11 +46,16 @@ let log_error (command, pst, msgs) =
 let get_cadir () = Filename.concat (Ocsigen_config.get_datadir ()) "CA"
 let get_capath fp = Filename.concat (get_cadir ()) fp
 let get_newcertpath i =
-  Filename.concat (get_capath "newcerts") (sprintf "%02x.pem" i)
+  Filename.concat (get_capath "newcerts") (sprintf "%02X.pem" i)
 let get_tmpdir () = Filename.concat (Ocsigen_config.get_datadir ()) "tmp"
 let get_tmppath fp = Filename.concat (get_tmpdir ()) fp
 let () =
   if not (Sys.file_exists (get_tmpdir ())) then Unix.mkdir (get_tmpdir ()) 0o700
+
+let mk_tmpdir request_id =
+  let dir = get_tmppath request_id in
+  (if Sys.file_exists dir then Lwt.return_unit else Lwt_unix.mkdir dir 0o700) >>
+  Lwt.return dir
 
 let option_of_string f = function "" -> None | s -> Some (f s)
 
@@ -114,8 +122,7 @@ let save_file content fp =
   Lwt_io.with_file Lwt_io.output fp (fun oc -> Lwt_io.write oc content)
 
 let openssl_command cmd args =
-  let config = get_capath "openssl.cnf" in
-  let argv = Array.of_list ("openssl" :: cmd :: "-config" :: config :: args) in
+  let argv = Array.of_list ("openssl" :: cmd :: args) in
   ("openssl", argv)
 
 let read_lines ic =
@@ -141,7 +148,49 @@ let exec_openssl subcommand args =
    | pst, stderr ->
       Lwt.return (Error (command, pst, stderr))
 
-(* CA Interface *)
+let pread_openssl subcommand args =
+  let command = openssl_command subcommand args in
+  Log.debug_f "Exec: openssl %s" (string_of_command command) >>
+  match%lwt
+    Lwt_process.with_process_full command @@ fun proc ->
+      let%lwt stdout = Lwt_io.read proc#stdout
+          and stderr = read_lines proc#stderr
+          and status = proc#status in
+      Lwt.return (status, stdout, stderr)
+  with
+   | Unix.WEXITED 0, stdout, stderr ->
+      Lwt_list.iter_s Log.info stderr >>
+      Lwt.return (Ok stdout)
+   | pst, _, stderr ->
+      Lwt.return (Error (command, pst, stderr))
+
+let pmap_openssl subcommand args input =
+  let command = openssl_command subcommand args in
+  Log.debug_f "Exec: openssl %s" (string_of_command command) >>
+  match%lwt
+    Lwt_process.with_process_full command @@ fun proc ->
+      let%lwt () = Lwt_io.write proc#stdin input >> Lwt_io.close proc#stdin
+          and stdout = Lwt_io.read proc#stdout
+          and stderr = read_lines proc#stderr
+          and status = proc#status in
+      Lwt.return (status, stdout, stderr)
+  with
+   | Unix.WEXITED 0, stdout, stderr ->
+      Lwt_list.iter_s Log.info stderr >>
+      Lwt.return (Ok stdout)
+   | pst, _, stderr ->
+      Lwt.return (Error (command, pst, stderr))
+
+
+(* CA Commands *)
+
+let exec_openssl_ca args =
+  let config = get_capath "openssl.cnf" in
+  exec_openssl "ca" ("-config" :: config :: args)
+
+let pread_openssl_ca args =
+  let config = get_capath "openssl.cnf" in
+  pread_openssl "ca" ("-config" :: config :: args)
 
 let save_spkac comps fp = Lwt_io.with_file Lwt_io.output fp
   begin fun oc ->
@@ -156,18 +205,42 @@ let save_spkac comps fp = Lwt_io.with_file Lwt_io.output fp
   end
 
 let sign_spkac ?(days = 365) ~request_id comps =
-  let workdir = get_tmppath request_id in
-  if not (Sys.file_exists workdir) then Unix.mkdir workdir 0o700;
+  let%lwt workdir = mk_tmpdir request_id in
   let spkac_path = Filename.concat workdir "inhclient.spkac" in
   save_spkac comps spkac_path >>
   let cert_path = Filename.concat workdir "inhclient.pem" in
   match%lwt
-    exec_openssl "ca"
+    exec_openssl_ca
       ["-days"; string_of_int days; "-notext"; "-batch";
        "-spkac"; spkac_path; "-out"; cert_path]
   with
    | Ok () -> Lwt.return (Ok cert_path)
    | Error error -> Lwt.return (Error error)
 
-let revoke_serial serial = exec_openssl "ca" ["-revoke"; get_newcertpath serial]
-let updatedb () = exec_openssl "ca" ["-updatedb"]
+let revoke_serial serial = exec_openssl_ca ["-revoke"; get_newcertpath serial]
+let updatedb () = exec_openssl_ca ["-updatedb"]
+
+let sign_pem ?(days = 365) ~request_id csr =
+  let%lwt workdir = mk_tmpdir request_id in
+  let csr_path = Filename.concat workdir "inhclient.csr" in
+  save_file csr csr_path >>
+  pread_openssl_ca
+    ["-days"; string_of_int days; "-notext"; "-batch";
+     "-in"; csr_path]
+
+
+(* PKCS12 Commands *)
+
+let default_pkcs12_name = "Key and Certificate from the Inhca Web CA"
+
+let export_pkcs12 ?(name = default_pkcs12_name) ~password ~cert ~certkey () =
+  let pwfd_in, pwfd_out = Lwt_unix.pipe_out () in
+  let pwarg = sprintf "fd:%d" (Fd_send_recv.int_of_fd pwfd_in) in
+  let%lwt () =
+    Lwt_unix.write pwfd_out password 0 (String.length password) >>= fun _ ->
+    Lwt_unix.write pwfd_out "\n" 0 1 >>= fun _ ->
+    Lwt_unix.close pwfd_out
+  and result =
+    pmap_openssl "pkcs12"
+      ["-export"; "-name"; name; "-passout"; pwarg] (certkey ^ cert) in
+  Lwt.return result

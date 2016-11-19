@@ -4,7 +4,9 @@ true: \
     package(calendar), \
     package(prime.unstable)
 <web/server/*>: \
+    package(config-file), \
     package(eliom.server), \
-    package(config-file)
+    package(fd-send-recv), \
+    package(x509)
 <web/client/*>: \
     package(eliom.client)

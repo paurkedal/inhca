@@ -18,7 +18,7 @@ let group = new Config_file.group
 
 let subject_base_dn =
   new Config_file.string_cp ~group ["subject"; "base_dn"]
-                            "OU=Inhca,DC=example,DC=org" "Subject base DN"
+                            "OU=Inhca,O=Example" "Subject base DN"
 
 let auth_http_header_cp =
   new Config_file.option_cp Config_file.string_wrappers ~group
