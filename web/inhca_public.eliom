@@ -126,9 +126,11 @@ let server_generates_form =
     ]
   ]
 
-let acquire_handler ?(error = []) = with_request @@ fun request_id request () ->
+let acquire_handler ?error = with_request @@ fun request_id request () ->
   Lwt.return @@ Inhca_tools.F.page ~title:"Acquire Certificate" [
-    F.div ~a:[F.a_class ["error"]] error;
+    (match error with
+     | Some error -> F.div ~a:[F.a_class ["error"]] error
+     | None -> F.pcdata "");
     keygen_form request request_id;
     server_generates_form request_id;
   ]
