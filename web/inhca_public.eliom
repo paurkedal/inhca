@@ -37,20 +37,28 @@ let main_service =
   let get = Eliom_parameter.unit in
   Eliom_service.(create ~path:(Path []) ~meth:(Get get) ())
 
-let acquire_service =
-  let get = Eliom_parameter.(suffix (string "request_id")) in
+let token_r =
+  Eliom_reference.eref ~secure:true
+    ~scope:Eliom_common.default_session_scope None
+
+let token_login_service =
+  let get = Eliom_parameter.(suffix (string "token")) in
   Eliom_service.(create ~path:(Path ["acquire"]) ~meth:(Get get) ())
-let%client acquire_service = ~%acquire_service
+let%client token_login_service = ~%token_login_service
+
+let acquire_service =
+  let get = Eliom_parameter.unit in
+  Eliom_service.(create ~path:(Path ["acquire"; ""]) ~meth:(Get get) ())
 
 let issue_spkac_service =
-  let get = Eliom_parameter.(string "request_id") in
+  let get = Eliom_parameter.unit in
   let post = Eliom_parameter.(string "spkac") in
   let open Eliom_service in
   create ~path:(Path ["acquire"; "issued-cert.der"])
          ~meth:(Post (get, post)) ()
 
 let issue_pkcs12_service =
-  let get = Eliom_parameter.(string "request_id") in
+  let get = Eliom_parameter.unit in
   let post = Eliom_parameter.(string "password" ** string "password'") in
   let open Eliom_service in
   create ~path:(Path ["acquire"; "issued-key-and-cert.p12"])
@@ -61,14 +69,43 @@ let main_handler () () =
     p [pcdata "Nothing to see here."]
   ])
 
-let with_request f request_id post =
-  try%lwt
-    let%lwt request = Ocsipersist.find request_table request_id in
-    f request_id request post
-  with Not_found ->
-    Inhca_tools.http_error 404 "No such certificate request."
+let with_enrollment f get post =
+  match%lwt Eliom_reference.get token_r with
+   | None ->
+      Inhca_tools.http_error 403 "No authorization token provided."
+   | Some token ->
+      let check_expiration enr =
+        if Enrollment.has_expired enr then
+          Inhca_tools.http_error 403 "Your enrollment token has expired."
+        else
+          Lwt.return_unit in
+      try%lwt
+        let%lwt enr = Ocsipersist.find enrollment_table token in
+        match Enrollment.state enr with
+         | Enrollment.Prepared ->
+            check_expiration enr >>
+            let enr = Enrollment.update ~state:Enrollment.Visited enr in
+            Eliom_bus.write edit_bus (`Update enr) >>
+            f enr get post
+         | Enrollment.Visited ->
+            check_expiration enr >>
+            f enr get post
+         | Enrollment.Acquired ->
+            Inhca_tools.http_error 400
+              "Your certificate has already been delivered. \
+               If something went wrong, you will need to request a new link."
+         | Enrollment.Revoked ->
+            Inhca_tools.http_error 403
+              "The enrollment token has been revoked."
+         | Enrollment.Failed ->
+            Inhca_tools.http_error 500
+              "Something went wrong when delivering the certifiacte."
+      with Not_found ->
+        Eliom_reference.set token_r None >>
+        Inhca_tools.http_error 403
+          "The authorization token has been deleted or is invalid."
 
-let keygen_form req =
+let keygen_form enr =
   F.Form.post_form ~service:issue_spkac_service @@
   fun spkac -> [
     F.h2 [F.pcdata "Generate Key and Certificate Request in Browser"];
@@ -83,8 +120,8 @@ let keygen_form req =
          but should still work for Firefox and Safari.";
     ];
     F.table ~a:[F.a_class ["assoc"]] [
-      F.tr [th_p "Full name:"; F.td [F.pcdata req.request_cn]];
-      F.tr [th_p "Email:"; F.td [F.pcdata req.request_email]];
+      F.tr [th_p "Full name:"; F.td [F.pcdata (Enrollment.cn enr)]];
+      F.tr [th_p "Email:"; F.td [F.pcdata (Enrollment.email enr)]];
       F.tr [
         th_p "Key strength:";
         F.td [
@@ -126,16 +163,21 @@ let server_generates_form =
     ]
   ]
 
-let acquire_handler ?error = with_request @@ fun request_id request () ->
+let token_login_handler token () =
+  Eliom_reference.set token_r (Some token) >>
+  Lwt.return (Eliom_registration.Redirection acquire_service)
+
+let acquire_handler ?error =
+  with_enrollment @@ fun enrollment () () ->
   Lwt.return @@ Inhca_tools.F.page ~title:"Acquire Certificate" [
     (match error with
      | Some error -> F.div ~a:[F.a_class ["error"]] error
      | None -> F.pcdata "");
-    keygen_form request request_id;
-    server_generates_form request_id;
+    keygen_form enrollment ();
+    server_generates_form ();
   ]
 
-let issue_spkac_handler = with_request @@ fun request_id req spkac ->
+let issue_spkac_handler = with_enrollment @@ fun enr () spkac ->
   let spkac = String.filter (not <@ Char.is_space) spkac in
   if spkac = "" then
     let error = [F.pcdata
@@ -143,42 +185,54 @@ let issue_spkac_handler = with_request @@ fun request_id req spkac ->
        This probably means that it does not support <keygen/>. \
        You may try the alternative method."
     ] in
-    Eliom_registration.Html.send =<< acquire_handler ~error request_id ()
+    Eliom_registration.Html.send =<< acquire_handler ~error () ()
   else begin
-    Eliom_bus.write edit_bus (`remove req) >>
-    let spkac_req = ("SPKAC", spkac) :: ("CN", req.request_cn) :: base_dn_tup in
-    match%lwt Inhca_openssl.sign_spkac request_id spkac_req with
+    let spkac_req =
+      ("SPKAC", spkac) :: ("CN", Enrollment.cn enr) :: base_dn_tup in
+    match%lwt
+      Inhca_openssl.sign_spkac ~token:(Enrollment.token enr) spkac_req
+    with
      | Ok cert ->
+        let enr = Enrollment.update ~state:Enrollment.Acquired enr in
+        Eliom_bus.write edit_bus (`Update enr) >>
         Eliom_registration.File.send
           ~content_type:"application/x-x509-user-cert" cert
      | Error error ->
+        let enr = Enrollment.update ~state:Enrollment.Failed enr in
+        Eliom_bus.write edit_bus (`Update enr) >>
         Inhca_openssl.log_error error >>
         Inhca_tools.F.send_error ~code:500
           "Signing failed, please contact site admin."
   end
 
 let issue_pkcs12_handler =
-  with_request @@ fun request_id req (password, password') ->
+  with_enrollment @@ fun enr () (password, password') ->
   Nocrypto_entropy_lwt.initialize () >>
   if password <> password' then
     let error = [F.pcdata "Passwords didn't match."] in
-    Eliom_registration.Html.send =<< acquire_handler ~error request_id () else
-  Eliom_bus.write edit_bus (`remove req) >>
+    Eliom_registration.Html.send =<< acquire_handler ~error () () else
   let key_size = 4096 in
   let digest = `SHA512 in
-  let dn = `CN req.request_cn :: base_dn in
+  let dn = `CN (Enrollment.cn enr) :: base_dn in
   let key = `RSA (Nocrypto.Rsa.generate key_size) in
   let csr = X509.CA.request dn ~digest key in
   let key_pem =
     X509.Encoding.Pem.Private_key.to_pem_cstruct1 key in
   let csr_pem =
     X509.Encoding.Pem.Certificate_signing_request.to_pem_cstruct1 csr in
-  match%lwt Inhca_openssl.sign_pem ~request_id (Cstruct.to_string csr_pem) with
+  match%lwt
+    Inhca_openssl.sign_pem ~token:(Enrollment.token enr)
+                           (Cstruct.to_string csr_pem)
+  with
    | Error error ->
+      let enr = Enrollment.update ~state:Enrollment.Failed enr in
+      Eliom_bus.write edit_bus (`Update enr) >>
       Inhca_openssl.log_error error >>
       Inhca_tools.F.send_error ~code:500
         "Signing failed, please contact site admin."
    | Ok crt_pem ->
+      let enr = Enrollment.update ~state:Enrollment.Acquired enr in
+      Eliom_bus.write edit_bus (`Update enr) >>
       match%lwt
         Inhca_openssl.export_pkcs12 ~password ~cert:crt_pem
                                     ~certkey:(Cstruct.to_string key_pem) ()
@@ -197,6 +251,7 @@ let () =
   let open Eliom_registration in
   let content_type = "text/html" in
   Html.register ~content_type ~service:main_service main_handler;
+  Redirection.register ~service:token_login_service token_login_handler;
   Html.register ~content_type ~service:acquire_service acquire_handler;
   Any.register ~service:issue_pkcs12_service issue_pkcs12_handler;
   Any.register ~service:issue_spkac_service issue_spkac_handler

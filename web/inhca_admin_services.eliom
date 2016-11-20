@@ -26,37 +26,25 @@ let admin_server_function json f =
   Eliom_client.server_function json
     (fun args -> Inhca_tools.authorize_admin () >> f args)
 
-let list_requests () =
+let list_enrollments () =
   Ocsipersist.fold_step (fun k r rs -> Lwt.return (r :: rs))
-                        request_table []
+                        enrollment_table []
 
-let%client list_requests =
-  ~%(admin_server_function [%json: unit] list_requests)
+let%client list_enrollments =
+  ~%(admin_server_function [%json: unit] list_enrollments)
 
-let create_request (cn, email) =
+let create_enrollment (cn, email) =
   Lwt_log.info_f "Creating requset for %s <%s>." cn email >>
-  let req = {
-    request_id = fresh_request_id ();
-    request_cn = cn;
-    request_email = email;
-    request_spkac = None;
-    request_pending = [`generate_key; `fetch_certificate];
-  } in
-  Eliom_bus.write edit_bus (`add req)
+  let enr = Enrollment.create ~cn ~email () in
+  Eliom_bus.write edit_bus (`Add enr)
 
-let%client create_request =
-  ~%(admin_server_function [%json: string * string] create_request)
+let%client create_enrollment =
+  ~%(admin_server_function [%json: string * string] create_enrollment)
 
-let delete_request (request_id, cn, email) =
-  Lwt_log.info_f "Deleting requset for %s <%s>." cn email >>
-  let req = {
-    request_id = request_id;
-    request_cn = cn;
-    request_email = email;
-    request_spkac = None; (* dummy for `remove *)
-    request_pending = []; (* dummy for `remove *)
-  } in
-  Eliom_bus.write edit_bus (`remove req)
+let delete_enrollment enr =
+  Lwt_log.info_f "Deleting enrollment for %s <%s>."
+    (Enrollment.cn enr) (Enrollment.email enr) >>
+  Eliom_bus.write edit_bus (`Remove enr)
 
-let%client delete_request =
-  ~%(admin_server_function [%json: string * string * string] delete_request)
+let%client delete_enrollment =
+  ~%(admin_server_function [%json: Enrollment.t] delete_enrollment)

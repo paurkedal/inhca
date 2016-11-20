@@ -28,5 +28,10 @@ let auth_admins_cp =
   new Config_file.list_cp Config_file.string_wrappers ~group ["auth"; "admins"]
     [] "List of values for the given HTTP header which grant admin access."
 
+let enrollment_expiration_cp =
+  new Config_file.float_cp
+    ~group ["enrollment"; "expiration_time"] 259200.0
+    "Time in seconds before a new enrollment expires."
+
 let () =
   group#read (Filename.concat (Ocsigen_config.get_datadir ()) "inhca.conf")

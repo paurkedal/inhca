@@ -52,8 +52,8 @@ let get_tmppath fp = Filename.concat (get_tmpdir ()) fp
 let () =
   if not (Sys.file_exists (get_tmpdir ())) then Unix.mkdir (get_tmpdir ()) 0o700
 
-let mk_tmpdir request_id =
-  let dir = get_tmppath request_id in
+let mk_tmpdir token =
+  let dir = get_tmppath token in
   (if Sys.file_exists dir then Lwt.return_unit else Lwt_unix.mkdir dir 0o700) >>
   Lwt.return dir
 
@@ -204,8 +204,8 @@ let save_spkac comps fp = Lwt_io.with_file Lwt_io.output fp
       comps
   end
 
-let sign_spkac ?(days = 365) ~request_id comps =
-  let%lwt workdir = mk_tmpdir request_id in
+let sign_spkac ?(days = 365) ~token comps =
+  let%lwt workdir = mk_tmpdir token in
   let spkac_path = Filename.concat workdir "inhclient.spkac" in
   save_spkac comps spkac_path >>
   let cert_path = Filename.concat workdir "inhclient.pem" in
@@ -220,8 +220,8 @@ let sign_spkac ?(days = 365) ~request_id comps =
 let revoke_serial serial = exec_openssl_ca ["-revoke"; get_newcertpath serial]
 let updatedb () = exec_openssl_ca ["-updatedb"]
 
-let sign_pem ?(days = 365) ~request_id csr =
-  let%lwt workdir = mk_tmpdir request_id in
+let sign_pem ?(days = 365) ~token csr =
+  let%lwt workdir = mk_tmpdir token in
   let csr_path = Filename.concat workdir "inhclient.csr" in
   save_file csr csr_path >>
   pread_openssl_ca

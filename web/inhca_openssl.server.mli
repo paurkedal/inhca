@@ -56,7 +56,7 @@ module Issue : sig
   (** The current index.txt entries of the CA. *)
 end
 
-val sign_spkac : ?days: int -> request_id: string -> (string * string) list ->
+val sign_spkac : ?days: int -> token: string -> (string * string) list ->
                  (string, error) result Lwt.t
 (** [sign_spkac spkac] signs the SPKAC (Signed Public Key and Challenge) given
     by [spkac] and returns the certificate.
@@ -72,7 +72,7 @@ val revoke_serial : int -> (unit, error) result Lwt.t
 val updatedb : unit -> (unit, error) result Lwt.t
 (** [updatedb ()] purges expired certificates from the index. *)
 
-val sign_pem : ?days: int -> request_id: string -> string ->
+val sign_pem : ?days: int -> token: string -> string ->
                (string, error) result Lwt.t
 (** [sign_pem request_id csr] signs the given PEM formatted CSR [csr] returning
     the certificate in PEM format.

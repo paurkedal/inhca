@@ -28,3 +28,5 @@ div.error {
 	padding: 0.5rem 0.5rem;
 	background-color: #fff3f3;
 }
+.valid { color: #007700; }
+.invalid { color: #770000; }
