@@ -22,13 +22,13 @@ let ignore_cv (x : unit Eliom_client_value.t) = ignore x
 module F = struct
 
   let page ~title contents =
-    (Eliom_tools.F.html ~title ~css:[["css"; "inhca.css"]]
+    (Eliom_tools.F.html ~title ~css:[["inhca.css"]]
       (Html.F.body (Html.F.h1 [Html.F.pcdata title] :: contents)))
 
   let send_error ~code msg =
     let hdr = sprintf "Error %d" code in
     Eliom_registration.Html.send ~code
-      (Eliom_tools.F.html ~title:hdr ~css:[["css"; "inhca.css"]]
+      (Eliom_tools.F.html ~title:hdr ~css:[["inhca.css"]]
         Html.F.(body [h1 [pcdata hdr]; p [pcdata msg]]))
 
 end
