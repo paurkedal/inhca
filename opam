@@ -13,7 +13,6 @@ depends: [
   "config-file"
   "eliom"
   "fd-send-recv"
-  "ocamlbuild-eliom-dev" {build}
   "ocamlfind" {build}
   "prime"
   "topkg" {build}
