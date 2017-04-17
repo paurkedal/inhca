@@ -70,40 +70,57 @@ let main_handler () () =
   ])
 
 let with_enrollment f get post =
+  let send_simple_page ?code ~title msg =
+    Inhca_tools.F.send_page ?code ~title [F.pcdata msg]
+  in
   match%lwt Eliom_reference.get token_r with
    | None ->
-      Inhca_tools.http_error 403 "No authorization token provided."
+      send_simple_page ~code:404 ~title:"Not Found"
+        "The URL of this page is incomplete."
    | Some token ->
-      let check_expiration enr =
-        if Enrollment.has_expired enr then
-          Inhca_tools.http_error 403 "Your enrollment token has expired."
-        else
-          Lwt.return_unit in
+      let send_expired () =
+        send_simple_page ~code:403 ~title:"Link Expired"
+          "This request has expired. \
+           Please ask for a new link when you expect to be available to use it."
+      in
       try%lwt
         let%lwt enr = Ocsipersist.find enrollment_table token in
         match Enrollment.state enr with
          | Enrollment.Prepared ->
-            check_expiration enr >>
+            if Enrollment.has_expired enr then send_expired () else
             let enr = Enrollment.update ~state:Enrollment.Visited enr in
             Eliom_bus.write edit_bus (`Update enr) >>
             f enr get post
          | Enrollment.Visited ->
-            check_expiration enr >>
+            if Enrollment.has_expired enr then send_expired () else
             f enr get post
          | Enrollment.Acquired ->
-            Inhca_tools.http_error 400
-              "Your certificate has already been delivered. \
-               If something went wrong, you will need to request a new link."
+            Inhca_tools.F.send_page ~code:400
+                                    ~title:"Certificate Already Delivered" [
+              F.pcdata
+                "According to our records, your certificate has already been \
+                 delivered. \
+                 If something went wrong while acquiring it, you will need to \
+                 request a new link. ";
+              F.b [F.pcdata
+                "If you did not use the link yourself, please let us know as \
+                 soon as possible, "];
+              F.pcdata "so that we can revoke the certificate."
+            ]
          | Enrollment.Revoked ->
-            Inhca_tools.http_error 403
-              "The enrollment token has been revoked."
+            send_simple_page ~code:403 ~title:"Enrollment Token Revoked"
+              "This enrollment link has been revoked by the administrator. \
+               Please ask for a new link if needed."
          | Enrollment.Failed ->
-            Inhca_tools.http_error 500
-              "Something went wrong when delivering the certifiacte."
+            send_simple_page ~code:500 ~title:"Internal Server Error"
+              "Something went wrong when delivering the certificate. \
+               Please let us know, so that the administrator can look into \
+               what happened and provide a new link."
       with Not_found ->
         Eliom_reference.set token_r None >>
-        Inhca_tools.http_error 403
-          "The authorization token has been deleted or is invalid."
+        send_simple_page ~code:403 ~title:"Unknown Link"
+          "The link has been deleted or is invalid. \
+           Please ask for a new link if needed."
 
 let keygen_form enr =
   F.Form.post_form ~service:issue_spkac_service @@
@@ -169,7 +186,7 @@ let token_login_handler token () =
 
 let acquire_handler ?error =
   with_enrollment @@ fun enrollment () () ->
-  Lwt.return @@ Inhca_tools.F.page ~title:"Acquire Certificate" [
+  Inhca_tools.F.send_page ~title:"Acquire Certificate" [
     (match error with
      | Some error -> F.div ~a:[F.a_class ["error"]] error
      | None -> F.pcdata "");
@@ -185,7 +202,7 @@ let issue_spkac_handler = with_enrollment @@ fun enr () spkac ->
        This probably means that it does not support <keygen/>. \
        You may try the alternative method."
     ] in
-    Eliom_registration.Html.send =<< acquire_handler ~error () ()
+    acquire_handler ~error () ()
   else begin
     let spkac_req =
       ("SPKAC", spkac) :: ("CN", Enrollment.cn enr) :: base_dn_tup in
@@ -210,7 +227,7 @@ let issue_pkcs12_handler =
   Nocrypto_entropy_lwt.initialize () >>
   if password <> password' then
     let error = [F.pcdata "Passwords didn't match."] in
-    Eliom_registration.Html.send =<< acquire_handler ~error () () else
+    acquire_handler ~error () () else
   let key_size = 4096 in
   let digest = `SHA512 in
   let dn = `CN (Enrollment.cn enr) :: base_dn in
@@ -252,6 +269,6 @@ let () =
   let content_type = "text/html" in
   Html.register ~content_type ~service:main_service main_handler;
   Redirection.register ~service:token_login_service token_login_handler;
-  Html.register ~content_type ~service:acquire_service acquire_handler;
+  Any.register ~content_type ~service:acquire_service acquire_handler;
   Any.register ~service:issue_pkcs12_service issue_pkcs12_handler;
   Any.register ~service:issue_spkac_service issue_spkac_handler
