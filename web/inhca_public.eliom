@@ -133,7 +133,6 @@ let with_enrollment f get post =
 let keygen_form enr =
   F.Form.post_form ~service:issue_spkac_service @@
   fun spkac -> [
-    F.h2 [F.pcdata "Generate Key and Certificate Request in Browser"];
     F.p [
       F.pcdata
         "Using this page, your browser will request a certificate which \
@@ -165,7 +164,6 @@ let keygen_form enr =
 let server_generates_form =
   F.Form.post_form ~service:issue_pkcs12_service ~a:[F.a_autocomplete false] @@
   fun (password, password') -> [
-    F.h2 [F.pcdata "Let the Server Generate the Key and Request"];
     F.p [
       F.pcdata
         "If generating the secret key in the browser is not supported \
@@ -194,13 +192,20 @@ let token_login_handler token () =
 
 let acquire_handler ?error =
   with_enrollment @@ fun enrollment () () ->
-  Inhca_tools.F.send_page ~title:"Acquire Certificate" [
+  let content =
+    if Inhca_config.enable_keygen_cp#get then [
+      F.h2 [F.pcdata "Generate Key and Certificate Request in Browser"];
+      keygen_form enrollment ();
+      F.h2 [F.pcdata "Let the Server Generate the Key and Request"];
+      server_generates_form ();
+    ] else [
+      server_generates_form ();
+    ]
+  in
+  Inhca_tools.F.send_page ~title:"Acquire Certificate"
     (match error with
-     | Some error -> F.div ~a:[F.a_class ["error"]] error
-     | None -> F.pcdata "");
-    keygen_form enrollment ();
-    server_generates_form ();
-  ]
+     | Some error -> F.div ~a:[F.a_class ["error"]] error :: content
+     | None -> content)
 
 let issue_spkac_handler = with_enrollment @@ fun enr () spkac ->
   let spkac = String.filter (not <@ Char.is_space) spkac in
