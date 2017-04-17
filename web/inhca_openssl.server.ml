@@ -184,6 +184,12 @@ let pmap_openssl subcommand args input =
 
 (* CA Commands *)
 
+let cacert_path = get_capath "cacert.pem"
+
+let gencrl () =
+  let config = get_capath "openssl.cnf" in
+  pread_openssl "ca" ["-config"; config; "-gencrl"]
+
 let exec_openssl_ca args =
   let config = get_capath "openssl.cnf" in
   exec_openssl "ca" ("-config" :: config :: args)

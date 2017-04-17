@@ -56,6 +56,10 @@ module Issue : sig
   (** The current index.txt entries of the CA. *)
 end
 
+val cacert_path : string
+
+val gencrl : unit -> (string, error) result Lwt.t
+
 val sign_spkac : ?days: int -> token: string -> (string * string) list ->
                  (string, error) result Lwt.t
 (** [sign_spkac spkac] signs the SPKAC (Signed Public Key and Challenge) given

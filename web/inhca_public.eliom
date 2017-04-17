@@ -64,6 +64,14 @@ let issue_pkcs12_service =
   create ~path:(Path ["acquire"; "issued-key-and-cert.p12"])
          ~meth:(Post (get, post)) ()
 
+let cacert_service =
+  let get = Eliom_parameter.unit in
+  Eliom_service.(create ~path:(Path ["cacert.pem"]) ~meth:(Get get) ())
+
+let crl_service =
+  let get = Eliom_parameter.unit in
+  Eliom_service.(create ~path:(Path ["crl.pem"]) ~meth:(Get get) ())
+
 let main_handler () () =
   Lwt.return F.(Inhca_tools.F.page ~title:"Inhca" [
     p [pcdata "Nothing to see here."]
@@ -264,6 +272,17 @@ let issue_pkcs12_handler =
           Inhca_tools.F.send_error ~code:500
             "Failed to deliver key and certificate, please contact side admin."
 
+let cacert_handler () () = Lwt.return Inhca_openssl.cacert_path
+
+let crl_handler () () =
+  (match%lwt Inhca_openssl.gencrl () with
+   | Error error ->
+      Inhca_tools.F.send_page ~code:500 ~title:"Internal Server Error"
+        [F.pcdata "Could not generate CRL."]
+   | Ok crl ->
+      Eliom_registration.String.send (crl, "application/x-pem-file")
+        >|= Eliom_registration.cast_unknown_content_kind)
+
 let () =
   let open Eliom_registration in
   let content_type = "text/html" in
@@ -271,4 +290,6 @@ let () =
   Redirection.register ~service:token_login_service token_login_handler;
   Any.register ~content_type ~service:acquire_service acquire_handler;
   Any.register ~service:issue_pkcs12_service issue_pkcs12_handler;
-  Any.register ~service:issue_spkac_service issue_spkac_handler
+  Any.register ~service:issue_spkac_service issue_spkac_handler;
+  File.register ~service:cacert_service cacert_handler;
+  Any.register ~service:crl_service crl_handler

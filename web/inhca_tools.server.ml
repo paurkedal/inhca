@@ -31,6 +31,12 @@ module F = struct
       (Eliom_tools.F.html ~title:hdr ~css:[["inhca.css"]]
         Html.F.(body [h1 [pcdata hdr]; p [pcdata msg]]))
 
+  let send_page ?code ~title contents =
+    let title =
+      (match code with
+       | None -> title
+       | Some code -> sprintf "Error %d, %s" code title) in
+    Eliom_registration.Html.send ?code (page ~title contents)
 end
 
 let http_error code msg =
