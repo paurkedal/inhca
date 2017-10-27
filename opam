@@ -11,7 +11,7 @@ depends: [
   "adpkg" {build}
   "calendar"
   "config-file"
-  "eliom"
+  "eliom" {>= "6.0.0" & < "7~"}
   "fd-send-recv"
   "ocamlfind" {build}
   "prime"

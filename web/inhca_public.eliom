@@ -208,7 +208,7 @@ let acquire_handler ?error =
      | None -> content)
 
 let issue_spkac_handler = with_enrollment @@ fun enr () spkac ->
-  let spkac = String.filter (not <@ Char.is_space) spkac in
+  let spkac = String.filter (not % Char.is_space) spkac in
   if spkac = "" then
     let error = [F.pcdata
       "Your web browser did not supply a certificate request. \
