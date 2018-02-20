@@ -85,13 +85,15 @@ type edit_message =
   [@@deriving json]
 
 [%%server.start]
+open Lwt.Infix
 
-let%lwt enrollment_table : Enrollment.t Ocsipersist.table Lwt.t =
+let enrollment_table : Enrollment.t Ocsipersist.table Lwt.t =
   Ocsipersist.open_table "enrollment"
 
 let edit_bus = Eliom_bus.create [%json: edit_message]
 
 let () = Lwt.async @@ fun () ->
+  enrollment_table >>= fun enrollment_table ->
   Lwt_stream.iter_s
     (function
      | `Add enr ->

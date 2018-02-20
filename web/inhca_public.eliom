@@ -92,6 +92,7 @@ let with_enrollment f get post =
            Please ask for a new link when you expect to be available to use it."
       in
       try%lwt
+        let%lwt enrollment_table = enrollment_table in
         let%lwt enr = Ocsipersist.find enrollment_table token in
         match Enrollment.state enr with
          | Enrollment.Prepared ->

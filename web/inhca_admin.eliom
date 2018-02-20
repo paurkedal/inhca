@@ -66,14 +66,75 @@ let%client tds_of_enrollment enrollment_link delete_handler enr =
     D.td [D.pcdata Enrollment.(email enr)];
     D.td [
       D.button ~a:[D.a_button_type `Button; D.a_onclick (delete_handler enr)] [
-        D.pcdata "delete"]
-      ];
+        D.pcdata "delete"
+      ]
+    ];
   ]
 
 let%client tr_of_enrollment enrollment_link delete_handler enr =
   D.tr (tds_of_enrollment enrollment_link delete_handler enr)
 
 module%client Enrollment_set = Prime_enumset.Make (Enrollment)
+
+let%client admin_handler_client enr_table edit_bus =
+
+  let static_row_count = 2 in
+
+  let delete_handler enr (ev : Dom_html.mouseEvent Js.t) =
+    (Js.Unsafe.coerce (Dom.eventTarget ev)
+      :> Dom_html.inputElement Js.t)##.disabled := Js._true;
+    Lwt.async (fun () -> delete_enrollment enr) in
+
+  let enrollment_link enr =
+    let token = Enrollment.token enr in
+    D.a ~service:Inhca_public.token_login_service [D.pcdata token] token in
+
+  Lwt.ignore_result begin
+    let enr_table_elem =
+      To_dom.of_table enr_table in
+    let%lwt enr_list = list_enrollments () in
+    let enr_set =
+      ref (List.fold Enrollment_set.add enr_list Enrollment_set.empty) in
+
+    (* Populate the enrollment table. *)
+    Enrollment_set.iter (fun enr ->
+      ignore (enr_table_elem##appendChild
+                ((To_dom.of_tr
+                    (tr_of_enrollment enrollment_link delete_handler enr)
+                  :> Dom.node Js.t))))
+      !enr_set;
+
+    (* Keep the enrollment table up to data. *)
+    let rec update = function
+     | `Remove enr ->
+        Eliom_lib.debug "Deleting %s for %s <%s>."
+          (Enrollment.token enr) (Enrollment.cn enr) (Enrollment.email enr);
+        (match Enrollment_set.locate enr !enr_set with
+         | false, _ -> Eliom_lib.error "Can't find the request to delete."
+         | true, i ->
+            enr_set := Enrollment_set.remove enr !enr_set;
+            enr_table_elem##deleteRow (static_row_count + i))
+     | `Update enr ->
+        update (`Remove enr); update (`Add enr)
+     | `Add enr ->
+        Eliom_lib.debug "Adding %s." (Enrollment.token enr);
+        let row =
+          match Enrollment_set.locate enr !enr_set with
+           | false, i ->
+              enr_set := Enrollment_set.add enr !enr_set;
+              enr_table_elem##insertRow (static_row_count + i)
+           | true, i ->
+              Js.Opt.get (enr_table_elem##.rows##item (static_row_count + i))
+                         (fun () -> failwith "Js.Opt.get") in
+        List.iter
+          (fun cell ->
+            ignore (row##appendChild((To_dom.of_td cell :> Dom.node Js.t))))
+          (tds_of_enrollment enrollment_link delete_handler enr) in
+    Lwt.async
+      (fun () -> Lwt_stream.iter update (Eliom_bus.stream edit_bus));
+
+    Lwt.return_unit
+  end
 
 let admin_handler () () =
   Inhca_tools.authorize_admin () >>
@@ -118,64 +179,7 @@ let admin_handler () () =
       ]
     ] in
   Inhca_tools.ignore_cv [%client
-
-    let static_row_count = 2 in
-
-    let delete_handler enr (ev : Dom_html.mouseEvent Js.t) =
-      (Js.Unsafe.coerce (Dom.eventTarget ev)
-        :> Dom_html.inputElement Js.t)##.disabled := Js._true;
-      Lwt.async (fun () -> delete_enrollment enr) in
-
-    let enrollment_link enr =
-      let token = Enrollment.token enr in
-      D.a ~service:Inhca_public.token_login_service [D.pcdata token] token in
-
-    Lwt.ignore_result begin
-      let enr_table_elem =
-        To_dom.of_table ~%(enr_table : Html_types.table elt) in
-      let%lwt enr_list = list_enrollments () in
-      let enr_set =
-        ref (List.fold Enrollment_set.add enr_list Enrollment_set.empty) in
-
-      (* Populate the enrollment table. *)
-      Enrollment_set.iter (fun enr ->
-        ignore (enr_table_elem##appendChild
-                  ((To_dom.of_tr
-                      (tr_of_enrollment enrollment_link delete_handler enr)
-                    :> Dom.node Js.t))))
-        !enr_set;
-
-      (* Keep the enrollment table up to data. *)
-      let rec update = function
-       | `Remove enr ->
-          Eliom_lib.debug "Deleting %s for %s <%s>."
-            (Enrollment.token enr) (Enrollment.cn enr) (Enrollment.email enr);
-          (match Enrollment_set.locate enr !enr_set with
-           | false, _ -> Eliom_lib.error "Can't find the request to delete."
-           | true, i ->
-              enr_set := Enrollment_set.remove enr !enr_set;
-              enr_table_elem##deleteRow (static_row_count + i))
-       | `Update enr ->
-          update (`Remove enr); update (`Add enr)
-       | `Add enr ->
-          Eliom_lib.debug "Adding %s." (Enrollment.token enr);
-          let row =
-            match Enrollment_set.locate enr !enr_set with
-             | false, i ->
-                enr_set := Enrollment_set.add enr !enr_set;
-                enr_table_elem##insertRow (static_row_count + i)
-             | true, i ->
-                Js.Opt.get (enr_table_elem##.rows##item (static_row_count + i))
-                           (fun () -> failwith "Js.Opt.get") in
-          List.iter
-            (fun cell ->
-              ignore (row##appendChild((To_dom.of_td cell :> Dom.node Js.t))))
-            (tds_of_enrollment enrollment_link delete_handler enr) in
-      Lwt.async
-        (fun () -> Lwt_stream.iter update (Eliom_bus.stream ~%edit_bus));
-
-      Lwt.return_unit
-    end
+    admin_handler_client ~%(enr_table : Html_types.table elt) ~%edit_bus
   ];
 
   let updatedb_button =

@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
+open Lwt.Infix
 open Inhca_data
 
 let admin_service =
@@ -27,6 +28,7 @@ let admin_server_function json f =
     (fun args -> Inhca_tools.authorize_admin () >> f args)
 
 let list_enrollments () =
+  enrollment_table >>= fun enrollment_table ->
   Ocsipersist.fold_step (fun k r rs -> Lwt.return (r :: rs))
                         enrollment_table []
 

@@ -243,8 +243,9 @@ let export_pkcs12 ?(name = default_pkcs12_name) ~password ~cert ~certkey () =
   let pwfd_in, pwfd_out = Lwt_unix.pipe_out () in
   let pwarg = sprintf "fd:%d" (Fd_send_recv.int_of_fd pwfd_in) in
   let%lwt () =
-    Lwt_unix.write pwfd_out password 0 (String.length password) >>= fun _ ->
-    Lwt_unix.write pwfd_out "\n" 0 1 >>= fun _ ->
+    Lwt_unix.write_string pwfd_out password 0 (String.length password)
+      >>= fun _ ->
+    Lwt_unix.write_string pwfd_out "\n" 0 1 >>= fun _ ->
     Lwt_unix.close pwfd_out
   and result =
     pmap_openssl "pkcs12"

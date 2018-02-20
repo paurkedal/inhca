@@ -70,6 +70,6 @@ type edit_message =
 
 [%%server.start]
 
-val enrollment_table : Enrollment.t Ocsipersist.table
+val enrollment_table : Enrollment.t Ocsipersist.table Lwt.t
 
 val edit_bus : (edit_message, edit_message) Eliom_bus.t
