@@ -25,7 +25,7 @@ let%client admin_service = ~%admin_service
 
 let admin_server_function json f =
   Eliom_client.server_function json
-    (fun args -> Inhca_tools.authorize_admin () >> f args)
+    (fun args -> Inhca_tools.authorize_admin () >>= fun () -> f args)
 
 let list_enrollments () =
   enrollment_table >>= fun enrollment_table ->
@@ -36,7 +36,7 @@ let%client list_enrollments =
   ~%(admin_server_function [%json: unit] list_enrollments)
 
 let create_enrollment (cn, email) =
-  Lwt_log.info_f "Creating requset for %s <%s>." cn email >>
+  Lwt_log.info_f "Creating requset for %s <%s>." cn email >>= fun () ->
   let enr = Enrollment.create ~cn ~email () in
   Eliom_bus.write edit_bus (`Add enr)
 
@@ -45,7 +45,7 @@ let%client create_enrollment =
 
 let delete_enrollment enr =
   Lwt_log.info_f "Deleting enrollment for %s <%s>."
-    (Enrollment.cn enr) (Enrollment.email enr) >>
+    (Enrollment.cn enr) (Enrollment.email enr) >>= fun () ->
   Eliom_bus.write edit_bus (`Remove enr)
 
 let%client delete_enrollment =

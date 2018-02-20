@@ -41,7 +41,7 @@ let log_error (command, pst, msgs) =
    | Unix.WSTOPPED i ->
       Log.error_f "Command stopped by signal %d: %s"
                   i (string_of_command command))
-   >> Lwt_list.iter_s (Log.error_f "Stderr: %s") msgs
+   >>= fun () -> Lwt_list.iter_s (Log.error_f "Stderr: %s") msgs
 
 let get_cadir () = Filename.concat (Ocsigen_config.get_datadir ()) "CA"
 let get_capath fp = Filename.concat (get_cadir ()) fp
@@ -54,7 +54,8 @@ let () =
 
 let mk_tmpdir token =
   let dir = get_tmppath token in
-  (if Sys.file_exists dir then Lwt.return_unit else Lwt_unix.mkdir dir 0o700) >>
+  (if Sys.file_exists dir then Lwt.return_unit else Lwt_unix.mkdir dir 0o700)
+    >>= fun () ->
   Lwt.return dir
 
 let option_of_string f = function "" -> None | s -> Some (f s)
@@ -134,23 +135,23 @@ let read_lines ic =
 
 let exec_openssl subcommand args =
   let command = openssl_command subcommand args in
-  Log.debug_f "Exec: openssl %s" (string_of_command command) >>
+  Log.debug_f "Exec: openssl %s" (string_of_command command) >>= fun () ->
   match%lwt
     Lwt_process.with_process_full command @@ fun proc ->
-      Lwt_io.close proc#stdout >>
+      Lwt_io.close proc#stdout >>= fun () ->
       let%lwt stderr = read_lines proc#stderr
           and status = proc#status in
       Lwt.return (status, stderr)
   with
    | Unix.WEXITED 0, stderr ->
-      Lwt_list.iter_s Log.info stderr >>
+      Lwt_list.iter_s Log.info stderr >>= fun () ->
       Lwt.return (Ok ())
    | pst, stderr ->
       Lwt.return (Error (command, pst, stderr))
 
 let pread_openssl subcommand args =
   let command = openssl_command subcommand args in
-  Log.debug_f "Exec: openssl %s" (string_of_command command) >>
+  Log.debug_f "Exec: openssl %s" (string_of_command command) >>= fun () ->
   match%lwt
     Lwt_process.with_process_full command @@ fun proc ->
       let%lwt stdout = Lwt_io.read proc#stdout
@@ -159,24 +160,25 @@ let pread_openssl subcommand args =
       Lwt.return (status, stdout, stderr)
   with
    | Unix.WEXITED 0, stdout, stderr ->
-      Lwt_list.iter_s Log.info stderr >>
+      Lwt_list.iter_s Log.info stderr >>= fun () ->
       Lwt.return (Ok stdout)
    | pst, _, stderr ->
       Lwt.return (Error (command, pst, stderr))
 
 let pmap_openssl subcommand args input =
   let command = openssl_command subcommand args in
-  Log.debug_f "Exec: openssl %s" (string_of_command command) >>
+  Log.debug_f "Exec: openssl %s" (string_of_command command) >>= fun () ->
   match%lwt
     Lwt_process.with_process_full command @@ fun proc ->
-      let%lwt () = Lwt_io.write proc#stdin input >> Lwt_io.close proc#stdin
-          and stdout = Lwt_io.read proc#stdout
-          and stderr = read_lines proc#stderr
-          and status = proc#status in
+      let%lwt () =
+          Lwt_io.write proc#stdin input >>= fun () -> Lwt_io.close proc#stdin
+        and stdout = Lwt_io.read proc#stdout
+        and stderr = read_lines proc#stderr
+        and status = proc#status in
       Lwt.return (status, stdout, stderr)
   with
    | Unix.WEXITED 0, stdout, stderr ->
-      Lwt_list.iter_s Log.info stderr >>
+      Lwt_list.iter_s Log.info stderr >>= fun () ->
       Lwt.return (Ok stdout)
    | pst, _, stderr ->
       Lwt.return (Error (command, pst, stderr))
@@ -213,7 +215,7 @@ let save_spkac comps fp = Lwt_io.with_file Lwt_io.output fp
 let sign_spkac ?(days = 365) ~token comps =
   let%lwt workdir = mk_tmpdir token in
   let spkac_path = Filename.concat workdir "inhclient.spkac" in
-  save_spkac comps spkac_path >>
+  save_spkac comps spkac_path >>= fun () ->
   let cert_path = Filename.concat workdir "inhclient.pem" in
   match%lwt
     exec_openssl_ca
@@ -229,7 +231,7 @@ let updatedb () = exec_openssl_ca ["-updatedb"]
 let sign_pem ?(days = 365) ~token csr =
   let%lwt workdir = mk_tmpdir token in
   let csr_path = Filename.concat workdir "inhclient.csr" in
-  save_file csr csr_path >>
+  save_file csr csr_path >>= fun () ->
   pread_openssl_ca
     ["-days"; string_of_int days; "-notext"; "-batch";
      "-in"; csr_path]

@@ -29,18 +29,18 @@ let reword_openssl_error = function
  | Ok () ->
     Lwt.return (Ok ())
  | Error error ->
-    Inhca_openssl.log_error error >>
+    Inhca_openssl.log_error error >>= fun () ->
     Lwt.return (Error "openssl command failed, see log for details.")
 
 let revoke_serial_sf serial =
-  Inhca_tools.authorize_admin () >>
+  Inhca_tools.authorize_admin () >>= fun () ->
   Inhca_openssl.revoke_serial serial >>= reword_openssl_error
 
 let%client revoke_serial =
   ~%(Eliom_client.server_function [%json: int] revoke_serial_sf)
 
 let updatedb_sf () =
-  Inhca_tools.authorize_admin () >>
+  Inhca_tools.authorize_admin () >>= fun () ->
   Inhca_openssl.updatedb () >>= reword_openssl_error
 
 let%client updatedb =
@@ -137,7 +137,7 @@ let%client admin_handler_client enr_table edit_bus =
   end
 
 let admin_handler () () =
-  Inhca_tools.authorize_admin () >>
+  Inhca_tools.authorize_admin () >>= fun () ->
 
   let cn_input : Html_types.input elt =
     D.input ~a:[D.a_input_type `Text] () in
@@ -153,7 +153,7 @@ let admin_handler () () =
       cn_input##.value := Js.string "";
       email_input##.value := Js.string "";
       Lwt.async (fun () ->
-        Lwt_log_js.error_f "Creating link for %s <%s>." cn email >>
+        Lwt_log_js.error_f "Creating link for %s <%s>." cn email >>= fun () ->
         create_enrollment (cn, email))
     end
   ] in

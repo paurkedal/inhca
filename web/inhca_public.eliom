@@ -98,7 +98,7 @@ let with_enrollment f get post =
          | Enrollment.Prepared ->
             if Enrollment.has_expired enr then send_expired () else
             let enr = Enrollment.update ~state:Enrollment.Visited enr in
-            Eliom_bus.write edit_bus (`Update enr) >>
+            Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
             f enr get post
          | Enrollment.Visited ->
             if Enrollment.has_expired enr then send_expired () else
@@ -126,7 +126,7 @@ let with_enrollment f get post =
                Please let us know, so that the administrator can look into \
                what happened and provide a new link."
       with Not_found ->
-        Eliom_reference.set token_r None >>
+        Eliom_reference.set token_r None >>= fun () ->
         send_simple_page ~code:403 ~title:"Unknown Link"
           "The link has been deleted or is invalid. \
            Please ask for a new link if needed."
@@ -188,7 +188,7 @@ let server_generates_form =
   ]
 
 let token_login_handler token () =
-  Eliom_reference.set token_r (Some token) >>
+  Eliom_reference.set token_r (Some token) >>= fun () ->
   Lwt.return (Eliom_registration.Redirection acquire_service)
 
 let acquire_handler ?error =
@@ -225,20 +225,20 @@ let issue_spkac_handler = with_enrollment @@ fun enr () spkac ->
     with
      | Ok cert ->
         let enr = Enrollment.update ~state:Enrollment.Acquired enr in
-        Eliom_bus.write edit_bus (`Update enr) >>
+        Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
         Eliom_registration.File.send
           ~content_type:"application/x-x509-user-cert" cert
      | Error error ->
         let enr = Enrollment.update ~state:Enrollment.Failed enr in
-        Eliom_bus.write edit_bus (`Update enr) >>
-        Inhca_openssl.log_error error >>
+        Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
+        Inhca_openssl.log_error error >>= fun () ->
         Inhca_tools.F.send_error ~code:500
           "Signing failed, please contact site admin."
   end
 
 let issue_pkcs12_handler =
   with_enrollment @@ fun enr () (password, password') ->
-  Nocrypto_entropy_lwt.initialize () >>
+  Nocrypto_entropy_lwt.initialize () >>= fun () ->
   if password <> password' then
     let error = [F.pcdata "Passwords didn't match."] in
     acquire_handler ~error () () else
@@ -257,13 +257,13 @@ let issue_pkcs12_handler =
   with
    | Error error ->
       let enr = Enrollment.update ~state:Enrollment.Failed enr in
-      Eliom_bus.write edit_bus (`Update enr) >>
-      Inhca_openssl.log_error error >>
+      Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
+      Inhca_openssl.log_error error >>= fun () ->
       Inhca_tools.F.send_error ~code:500
         "Signing failed, please contact site admin."
    | Ok crt_pem ->
       let enr = Enrollment.update ~state:Enrollment.Acquired enr in
-      Eliom_bus.write edit_bus (`Update enr) >>
+      Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
       match%lwt
         Inhca_openssl.export_pkcs12 ~password ~cert:crt_pem
                                     ~certkey:(Cstruct.to_string key_pem) ()
@@ -274,7 +274,7 @@ let issue_pkcs12_handler =
               (pkcs12, "application/x-pkcs12")
             >|= Eliom_registration.cast_unknown_content_kind
        | Error error ->
-          Inhca_openssl.log_error error >>
+          Inhca_openssl.log_error error >>= fun () ->
           Inhca_tools.F.send_error ~code:500
             "Failed to deliver key and certificate, please contact side admin."
 
