@@ -1,13 +1,12 @@
-opam-version: "1.2"
+opam-version: "2.0"
 name: "inhca"
-author: "Petter A. Urkedal <paurkedal@gmail.com>"
 maintainer: "Petter A. Urkedal <paurkedal@gmail.com>"
+authors: "Petter A. Urkedal <paurkedal@gmail.com>"
+license: "GPL-3"
 homepage: "https://github.com/paurkedal/inhca/"
 bug-reports: "https://github.com/paurkedal/inhca/issues"
-dev-repo: "https://github.com/paurkedal/inhca.git"
-license: "GPL-3"
-build: ["ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%"]
 depends: [
+  "ocaml"
   "adpkg" {build}
   "calendar"
   "config-file"
@@ -18,3 +17,5 @@ depends: [
   "topkg" {build}
   "x509"
 ]
+build: ["ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%"]
+dev-repo: "git+https://github.com/paurkedal/inhca.git"
