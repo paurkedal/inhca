@@ -24,6 +24,9 @@
   open Unprime_list
   open Unprime_option
 ]
+[%%client
+  open Js_of_ocaml
+]
 
 let reword_openssl_error = function
  | Ok () ->
@@ -58,15 +61,15 @@ let%client tds_of_enrollment enrollment_link delete_handler enr =
     if Enrollment.has_expired enr then "invalid" else "valid" in
   [
     D.td [enrollment_link enr];
-    D.td [D.pcdata Enrollment.(string_of_state (state enr))];
+    D.td [D.txt Enrollment.(string_of_state (state enr))];
     D.td ~a:[F.a_class [expiration_class]] [
-      D.pcdata (Time_format.to_string (Enrollment.expiration_time enr))
+      D.txt (Time_format.to_string (Enrollment.expiration_time enr))
     ];
-    D.td [D.pcdata Enrollment.(cn enr)];
-    D.td [D.pcdata Enrollment.(email enr)];
+    D.td [D.txt Enrollment.(cn enr)];
+    D.td [D.txt Enrollment.(email enr)];
     D.td [
       D.button ~a:[D.a_button_type `Button; D.a_onclick (delete_handler enr)] [
-        D.pcdata "delete"
+        D.txt "delete"
       ]
     ];
   ]
@@ -87,7 +90,7 @@ let%client admin_handler_client enr_table edit_bus =
 
   let enrollment_link enr =
     let token = Enrollment.token enr in
-    D.a ~service:Inhca_public.token_login_service [D.pcdata token] token in
+    D.a ~service:Inhca_public.token_login_service [D.txt token] token in
 
   Lwt.ignore_result begin
     let enr_table_elem =
@@ -159,15 +162,15 @@ let admin_handler () () =
   ] in
   let add_button =
     D.button ~a:[D.a_onclick add_handler; D.a_button_type `Button]
-             [D.pcdata "add"] in
+             [D.txt "add"] in
   let enr_table =
     D.table ~a:[D.a_class ["std"]] [
       D.tr [
-        D.th [D.pcdata "Id"];
-        D.th [D.pcdata "State"];
-        D.th [D.pcdata "Expiration"];
-        D.th [D.pcdata "CN"];
-        D.th [D.pcdata "Email"];
+        D.th [D.txt "Id"];
+        D.th [D.txt "State"];
+        D.th [D.txt "Expiration"];
+        D.th [D.txt "CN"];
+        D.th [D.txt "Email"];
       ];
       D.tr [
         D.td [];
@@ -187,15 +190,15 @@ let admin_handler () () =
       match%lwt updatedb () with
        | Ok () -> refresh_page ()
        | Error msg -> report_error msg in
-    F.button ~a:[F.a_button_type `Button; F.a_onclick h] [F.pcdata "update"] in
+    F.button ~a:[F.a_button_type `Button; F.a_onclick h] [F.txt "update"] in
 
   let issue_header_tr =
     F.tr [
-      F.th [F.pcdata "SN"];
-      F.th [F.pcdata "State"];
-      F.th [F.pcdata "Expired"];
-      F.th [F.pcdata "Revoked"];
-      F.th [F.pcdata "DN"];
+      F.th [F.txt "SN"];
+      F.th [F.txt "State"];
+      F.th [F.txt "Expired"];
+      F.th [F.txt "Revoked"];
+      F.th [F.txt "DN"];
       F.td [updatedb_button];
     ] in
 
@@ -214,17 +217,17 @@ let admin_handler () () =
              | Ok () -> refresh_page ()
              | Error msg -> report_error msg in
           [F.button ~a:[F.a_button_type `Button; F.a_onclick h]
-                    [F.pcdata "revoke"]] in
+                    [F.txt "revoke"]] in
 
     F.tr [
-      F.td [F.pcdata (sprintf "%02x" serial)];
-      F.td [F.pcdata (Issue.string_of_state state)];
-      F.td [F.pcdata (Time_format.to_string (Issue.expired issue))];
+      F.td [F.txt (sprintf "%02x" serial)];
+      F.td [F.txt (Issue.string_of_state state)];
+      F.td [F.txt (Time_format.to_string (Issue.expired issue))];
       F.td
         (match Issue.revoked issue with
          | None -> []
-         | Some d -> [F.pcdata (Time_format.to_string d)]);
-      F.td [F.pcdata (Issue.dn issue)];
+         | Some d -> [F.txt (Time_format.to_string d)]);
+      F.td [F.txt (Issue.dn issue)];
       F.td control;
     ] in
 
@@ -233,9 +236,9 @@ let admin_handler () () =
 
   Lwt.return
     (Inhca_tools.F.page ~title:"Pending Certificate Requests" [
-      F.h2 [F.pcdata "Pending Requests"];
+      F.h2 [F.txt "Pending Requests"];
       enr_table;
-      F.h2 [F.pcdata "Issued Certificates"];
+      F.h2 [F.txt "Issued Certificates"];
       F.table ~a:[F.a_class ["std"]] (issue_header_tr :: issue_trs);
     ])
 

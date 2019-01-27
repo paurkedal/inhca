@@ -23,7 +23,7 @@ open Unprime_char
 open Unprime_option
 open Unprime_string
 
-let th_p s = F.th [F.pcdata s]
+let th_p s = F.th [F.txt s]
 
 let base_dn_str = Inhca_config.subject_base_dn#get
 
@@ -74,12 +74,12 @@ let crl_service =
 
 let main_handler () () =
   Lwt.return F.(Inhca_tools.F.page ~title:"Inhca" [
-    p [pcdata "Nothing to see here."]
+    p [txt "Nothing to see here."]
   ])
 
 let with_enrollment f get post =
   let send_simple_page ?code ~title msg =
-    Inhca_tools.F.send_page ?code ~title [F.pcdata msg]
+    Inhca_tools.F.send_page ?code ~title [F.txt msg]
   in
   match%lwt Eliom_reference.get token_r with
    | None ->
@@ -106,15 +106,15 @@ let with_enrollment f get post =
          | Enrollment.Acquired ->
             Inhca_tools.F.send_page ~code:400
                                     ~title:"Certificate Already Delivered" [
-              F.pcdata
+              F.txt
                 "According to our records, your certificate has already been \
                  delivered. \
                  If something went wrong while acquiring it, you will need to \
                  request a new link. ";
-              F.b [F.pcdata
+              F.b [F.txt
                 "If you did not use the link yourself, please let us know as \
                  soon as possible, "];
-              F.pcdata "so that we can revoke the certificate."
+              F.txt "so that we can revoke the certificate."
             ]
          | Enrollment.Revoked ->
             send_simple_page ~code:403 ~title:"Enrollment Token Revoked"
@@ -135,18 +135,18 @@ let keygen_form enr =
   F.Form.post_form ~service:issue_spkac_service @@
   fun spkac -> [
     F.p [
-      F.pcdata
+      F.txt
         "Using this page, your browser will request a certificate which \
          will be immediately installed in your current browser, but you \
          can export and import it into another browser if needed. ";
-      F.pcdata
+      F.txt
         "This method is not supported by recent versions of Chrome and \
          Chromium or any version of Internet Explorer, \
          but should still work for Firefox and Safari.";
     ];
     F.table ~a:[F.a_class ["assoc"]] [
-      F.tr [th_p "Full name:"; F.td [F.pcdata (Enrollment.cn enr)]];
-      F.tr [th_p "Email:"; F.td [F.pcdata (Enrollment.email enr)]];
+      F.tr [th_p "Full name:"; F.td [F.txt (Enrollment.cn enr)]];
+      F.tr [th_p "Email:"; F.td [F.txt (Enrollment.email enr)]];
       F.tr [
         th_p "Key strength:";
         F.td [
@@ -166,7 +166,7 @@ let server_generates_form =
   F.Form.post_form ~service:issue_pkcs12_service ~a:[F.a_autocomplete false] @@
   fun (password, password') -> [
     F.p [
-      F.pcdata
+      F.txt
         "If generating the secret key in the browser is not supported \
          you can let the server generate it for you and deliver it along \
          with the certificate as a download.  It can typically be imported \
@@ -174,16 +174,16 @@ let server_generates_form =
          into the keyring of the operating system.";
     ];
     F.p [
-      F.pcdata "Type a password ";
+      F.txt "Type a password ";
       F.Form.input ~input_type:`Password ~name:password F.Form.string;
-      F.pcdata " and again ";
+      F.txt " and again ";
       F.Form.input ~input_type:`Password ~name:password' F.Form.string;
-      F.pcdata ", to protect the secret key in the download.";
+      F.txt ", to protect the secret key in the download.";
       F.br ();
-      F.pcdata "Then, ";
+      F.txt "Then, ";
       F.Form.input ~input_type:`Submit
         ~value:"download the key and certificate" F.Form.string;
-      F.pcdata ".";
+      F.txt ".";
     ]
   ]
 
@@ -195,9 +195,9 @@ let acquire_handler ?error =
   with_enrollment @@ fun enrollment () () ->
   let content =
     if Inhca_config.enable_keygen_cp#get then [
-      F.h2 [F.pcdata "Generate Key and Certificate Request in Browser"];
+      F.h2 [F.txt "Generate Key and Certificate Request in Browser"];
       keygen_form enrollment ();
-      F.h2 [F.pcdata "Let the Server Generate the Key and Request"];
+      F.h2 [F.txt "Let the Server Generate the Key and Request"];
       server_generates_form ();
     ] else [
       server_generates_form ();
@@ -211,7 +211,7 @@ let acquire_handler ?error =
 let issue_spkac_handler = with_enrollment @@ fun enr () spkac ->
   let spkac = String.filter (not % Char.is_space) spkac in
   if spkac = "" then
-    let error = [F.pcdata
+    let error = [F.txt
       "Your web browser did not supply a certificate request. \
        This probably means that it does not support <keygen/>. \
        You may try the alternative method."
@@ -240,7 +240,7 @@ let issue_pkcs12_handler =
   with_enrollment @@ fun enr () (password, password') ->
   Nocrypto_entropy_lwt.initialize () >>= fun () ->
   if password <> password' then
-    let error = [F.pcdata "Passwords didn't match."] in
+    let error = [F.txt "Passwords didn't match."] in
     acquire_handler ~error () () else
   let key_size = 4096 in
   let digest = `SHA512 in
@@ -284,7 +284,7 @@ let crl_handler () () =
   (match%lwt Inhca_openssl.gencrl () with
    | Error error ->
       Inhca_tools.F.send_page ~code:500 ~title:"Internal Server Error"
-        [F.pcdata "Could not generate CRL."]
+        [F.txt "Could not generate CRL."]
    | Ok crl ->
       Eliom_registration.String.send (crl, "application/x-pem-file")
         >|= Eliom_registration.cast_unknown_content_kind)

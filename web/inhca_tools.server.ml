@@ -23,13 +23,13 @@ module F = struct
 
   let page ~title contents =
     (Eliom_tools.F.html ~title ~css:[["inhca.css"]]
-      (Html.F.body (Html.F.h1 [Html.F.pcdata title] :: contents)))
+      (Html.F.body (Html.F.h1 [Html.F.txt title] :: contents)))
 
   let send_error ~code msg =
     let hdr = sprintf "Error %d" code in
     Eliom_registration.Html.send ~code
       (Eliom_tools.F.html ~title:hdr ~css:[["inhca.css"]]
-        Html.F.(body [h1 [pcdata hdr]; p [pcdata msg]]))
+        Html.F.(body [h1 [txt hdr]; p [txt msg]]))
 
   let send_page ?code ~title contents =
     let title =

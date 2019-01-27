@@ -1,5 +1,5 @@
 true: eliom_ppx
-true: package(lwt.ppx)
+true: package(lwt_ppx)
 true: package(ppx_deriving), package(js_of_ocaml-ppx.deriving)
 <server/*>: thread
 <client/*>: package(js_of_ocaml.ppx)
