@@ -19,3 +19,4 @@ depends: [
 ]
 build: ["ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%"]
 dev-repo: "git+https://github.com/paurkedal/inhca.git"
+synopsis: "Simple online CA for in-house use."
