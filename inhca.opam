@@ -15,7 +15,7 @@ depends: [
   "ocamlfind" {build}
   "prime"
   "topkg" {build}
-  "x509"
+  "x509" {< "0.7~"}
 ]
 build: ["ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%"]
 dev-repo: "git+https://github.com/paurkedal/inhca.git"
