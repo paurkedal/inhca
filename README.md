@@ -1,6 +1,6 @@
 # In-House CA
 
-This project provides a simple online X509 certificate authority.
+This project provides a simple online X.509 certificate authority.
 
 ## Disclaimer and Limitations
 
