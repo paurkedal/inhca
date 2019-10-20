@@ -244,13 +244,11 @@ let issue_pkcs12_handler =
     acquire_handler ~error () () else
   let key_size = 4096 in
   let digest = `SHA512 in
-  let dn = `CN (Enrollment.cn enr) :: base_dn in
+  let dn = Dn.cn (Enrollment.cn enr) :: base_dn in
   let key = `RSA (Nocrypto.Rsa.generate key_size) in
-  let csr = X509.CA.request dn ~digest key in
-  let key_pem =
-    X509.Encoding.Pem.Private_key.to_pem_cstruct1 key in
-  let csr_pem =
-    X509.Encoding.Pem.Certificate_signing_request.to_pem_cstruct1 csr in
+  let csr = X509.Signing_request.create dn ~digest key in
+  let key_pem = X509.Private_key.encode_pem key in
+  let csr_pem = X509.Signing_request.encode_pem csr in
   match%lwt
     Inhca_openssl.sign_pem ~token:(Enrollment.token enr)
                            (Cstruct.to_string csr_pem)

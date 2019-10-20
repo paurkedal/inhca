@@ -12,10 +12,11 @@ depends: [
   "config-file"
   "eliom" {>= "6.0.0" & < "7~"}
   "fd-send-recv"
+  "fmt"
   "ocamlfind" {build}
   "prime"
   "topkg" {build}
-  "x509" {< "0.7~"}
+  "x509" {>= "0.8.1"}
 ]
 build: ["ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%"]
 dev-repo: "git+https://github.com/paurkedal/inhca.git"
