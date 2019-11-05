@@ -15,14 +15,13 @@
  *)
 
 [%%shared.start]
-open Unprime_string
-
 module Date = CalendarLib.Date
 module Date_format = CalendarLib.Printer.Date
 module Time = CalendarLib.Calendar
 module Time_format = CalendarLib.Printer.Calendar
 
 [%%server.start]
+open Unprime_string
 
 module Dn = struct
   include X509.Distinguished_name

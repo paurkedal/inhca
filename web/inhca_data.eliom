@@ -14,8 +14,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Printf
-
 [%%shared.start]
 open Inhca_prereq
 
@@ -72,8 +70,10 @@ module%server Enrollment = struct
     let expiration = Unix.time () +. default_expiration in
     {token; state = Prepared; expiration; cn; email}
 
+(*
   let create_dummy ~cn ~email ~token () =
     {token; state = Prepared; expiration = 0.0; cn; email}
+*)
 
   let update ~state enr = {enr with state}
 end

@@ -20,12 +20,13 @@
   open Inhca_admin_services
   open Inhca_data
   open Inhca_prereq
+]
+[%%server
   open Printf
-  open Unprime_list
-  open Unprime_option
 ]
 [%%client
   open Js_of_ocaml
+  open Unprime_list
 ]
 
 let reword_openssl_error = function

@@ -23,8 +23,6 @@ open Unprime_char
 open Unprime_option
 open Unprime_string
 
-let th_p s = F.th [F.txt s]
-
 let base_dn_str = Inhca_config.subject_base_dn#get
 
 let base_dn_tup =

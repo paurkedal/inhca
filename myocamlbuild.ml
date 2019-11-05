@@ -12,6 +12,8 @@ let oasis_executables = [
 
 let () = Ocamlbuild_plugin.dispatch @@ fun hook ->
   M.dispatcher ~oasis_executables hook;
-  match hook with
-  | Before_options -> Options.make_links := false
-  | _ -> ()
+  (match hook with
+   | After_rules ->
+      flag ["ocaml"; "compile"] & S[A"-w"; A"+K-39"];
+   | Before_options -> Options.make_links := false
+   | _ -> ())
