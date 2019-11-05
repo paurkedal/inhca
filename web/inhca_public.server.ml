@@ -18,16 +18,8 @@ open Eliom_content.Html
 open Inhca_data
 open Inhca_prereq
 open Lwt.Infix
-open Unprime
-open Unprime_char
-open Unprime_option
-open Unprime_string
 
 let base_dn_str = Inhca_config.subject_base_dn#get
-
-let base_dn_tup =
-  List.map (fun s -> Option.get (String.cut_affix "=" s))
-    (String.chop_affix "," base_dn_str)
 
 let base_dn = Dn.of_string base_dn_str
 
@@ -46,13 +38,6 @@ let token_login_service =
 let acquire_service =
   let get = Eliom_parameter.unit in
   Eliom_service.(create ~path:(Path ["acquire"; ""]) ~meth:(Get get) ())
-
-let issue_spkac_service =
-  let get = Eliom_parameter.unit in
-  let post = Eliom_parameter.(string "spkac") in
-  let open Eliom_service in
-  create ~path:(Path ["acquire"; "issued-cert.der"])
-         ~meth:(Post (get, post)) ()
 
 let issue_pkcs12_service =
   let get = Eliom_parameter.unit in
@@ -165,34 +150,6 @@ let acquire_handler ?error =
      | Some error -> F.div ~a:[F.a_class ["error"]] error :: content
      | None -> content)
 
-let issue_spkac_handler = with_enrollment @@ fun enr () spkac ->
-  let spkac = String.filter (not % Char.is_space) spkac in
-  if spkac = "" then
-    let error = [F.txt
-      "Your web browser did not supply a certificate request. \
-       This probably means that it does not support <keygen/>. \
-       You may try the alternative method."
-    ] in
-    acquire_handler ~error () ()
-  else begin
-    let spkac_req =
-      ("SPKAC", spkac) :: ("CN", Enrollment.cn enr) :: base_dn_tup in
-    match%lwt
-      Inhca_openssl.sign_spkac ~token:(Enrollment.token enr) spkac_req
-    with
-     | Ok cert ->
-        let enr = Enrollment.update ~state:Enrollment.Acquired enr in
-        Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
-        Eliom_registration.File.send
-          ~content_type:"application/x-x509-user-cert" cert
-     | Error error ->
-        let enr = Enrollment.update ~state:Enrollment.Failed enr in
-        Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
-        Inhca_openssl.log_error error >>= fun () ->
-        Inhca_tools.F.send_error ~code:500
-          "Signing failed, please contact site admin."
-  end
-
 let issue_pkcs12_handler =
   with_enrollment @@ fun enr () (password, password') ->
   Nocrypto_entropy_lwt.initialize () >>= fun () ->
@@ -251,6 +208,5 @@ let () =
   Redirection.register ~service:token_login_service token_login_handler;
   Any.register ~content_type ~service:acquire_service acquire_handler;
   Any.register ~service:issue_pkcs12_service issue_pkcs12_handler;
-  Any.register ~service:issue_spkac_service issue_spkac_handler;
   File.register ~service:cacert_service cacert_handler;
   Any.register ~service:crl_service crl_handler
