@@ -1,5 +1,4 @@
 true: bin_annot
-false: package(adpkg), package(eliom.ocamlbuild)
 true: \
     package(fmt), \
     package(prime.unstable), \

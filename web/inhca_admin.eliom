@@ -161,7 +161,7 @@ let admin_handler () () =
       cn_input##.value := Js.string "";
       email_input##.value := Js.string "";
       Lwt.async (fun () ->
-        Lwt_log_js.error_f "Creating link for %s <%s>." cn email >>= fun () ->
+        Lwt_log_js.info_f "Creating link for %s <%s>." cn email >>= fun () ->
         create_enrollment (cn, email))
     end
   ] in
