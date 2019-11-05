@@ -29,7 +29,7 @@ let base_dn_tup =
   List.map (fun s -> Option.get (String.cut_affix "=" s))
     (String.chop_affix "," base_dn_str)
 
-let base_dn = dn_of_string base_dn_str
+let base_dn = Dn.of_string base_dn_str
 
 let main_service =
   let get = Eliom_parameter.unit in

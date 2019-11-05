@@ -15,7 +15,7 @@
  *)
 
 [%%shared.start]
-open Inhca_prereq
+module Time = CalendarLib.Calendar
 
 module Enrollment_base = struct
 

@@ -15,7 +15,6 @@
  *)
 
 [%%shared.start]
-open Inhca_prereq
 
 module Enrollment_base : sig
 
@@ -37,7 +36,7 @@ module Enrollment_base : sig
 
   val expiration : t -> float
 
-  val expiration_time : t -> Time.t
+  val expiration_time : t -> CalendarLib.Calendar.t
 
   val cn : t -> string
 

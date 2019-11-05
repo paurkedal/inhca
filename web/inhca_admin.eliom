@@ -19,7 +19,7 @@
   open Lwt.Infix
   open Inhca_admin_services
   open Inhca_data
-  open Inhca_prereq
+  module Time_format = CalendarLib.Printer.Calendar
 ]
 [%%server
   open Printf
