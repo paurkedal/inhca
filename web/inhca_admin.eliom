@@ -90,7 +90,7 @@ let%client admin_handler_client enr_table edit_bus =
 
   let enrollment_link enr =
     let token = Enrollment.token enr in
-    D.a ~service:Inhca_public.token_login_service [D.txt token] token in
+    D.a ~service:~%Inhca_public.token_login_service [D.txt token] token in
 
   Lwt.ignore_result begin
     let enr_table_elem =

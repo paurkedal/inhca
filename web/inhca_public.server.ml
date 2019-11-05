@@ -44,7 +44,6 @@ let token_r =
 let token_login_service =
   let get = Eliom_parameter.(suffix (string "token")) in
   Eliom_service.(create ~path:(Path ["acquire"]) ~meth:(Get get) ())
-let%client token_login_service = ~%token_login_service
 
 let acquire_service =
   let get = Eliom_parameter.unit in
