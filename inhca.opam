@@ -8,13 +8,13 @@ bug-reports: "https://github.com/paurkedal/inhca/issues"
 depends: [
   "ocaml"
   "adpkg" {build}
-  "calendar"
   "config-file"
   "eliom" {>= "6.0.0" & < "7~"}
   "fd-send-recv"
   "fmt"
   "ocamlfind" {build}
   "prime"
+  "ptime"
   "topkg" {build}
   "x509" {>= "0.8.1"}
 ]

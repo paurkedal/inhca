@@ -1,4 +1,4 @@
-(* Copyright (C) 2014--2016  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2014--2019  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,6 @@ open Printf
 
 module Log =
   Inhca_tools.Local_log (struct let section_name = "inhca:openssl" end)
-
-module Time = CalendarLib.Calendar
-module Time_format = CalendarLib.Printer.Calendar
 
 let string_of_command command =
   let quoted s =
@@ -61,14 +58,17 @@ let mk_tmpdir token =
 let option_of_string f = function "" -> None | s -> Some (f s)
 
 let time_of_string s =
-  let s = "20" ^ s in (* Two-digit years! *)
-  let n = String.length s in
-  match n, s.[n - 1] with
-  | 15, 'Z' -> Time_format.from_fstring "%Y%m%d%H%M%SZ" s
-  | 17, _   -> Time_format.from_fstring "%Y%m%d%H%M%S%z" s
-  | 13, 'Z' -> Time_format.from_fstring "%Y%m%d%H%MZ" s
-  | 15, _   -> Time_format.from_fstring "%Y%m%d%H%M%z" s
-  | _ -> invalid_arg "Invalid time in index.txt."
+  let field i = int_of_string (String.sub s (2 * i) 2) in
+  (match String.length s with
+   | 13 when s.[12] = 'Z' ->
+      (match let date = (2000 + field 0, field 1, field 2) in
+             let time = (field 3, field 4, field 5) in
+             Ptime.of_date_time (date, (time, 0))
+       with
+       | Some t -> t
+       | None -> invalid_arg "Invalid time in index.txt"
+       | exception Failure _ -> invalid_arg "Invalid time in index.txt")
+   | _ -> invalid_arg "Invalid time in index.txt")
 
 module Issue = struct
 
@@ -76,8 +76,8 @@ module Issue = struct
 
   type t = {
     state : state;
-    expired : Time.t;
-    revoked : Time.t option;
+    expired : Ptime.t;
+    revoked : Ptime.t option;
     serial : int;
     dn : string;
   }

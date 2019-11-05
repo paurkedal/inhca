@@ -1,4 +1,4 @@
-(* Copyright (C) 2017  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2017--2019  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ module Enrollment_base : sig
 
   val expiration : t -> float
 
-  val expiration_time : t -> CalendarLib.Calendar.t
+  val expiration_time : t -> Ptime.t
 
   val cn : t -> string
 

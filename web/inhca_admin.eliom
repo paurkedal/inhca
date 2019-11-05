@@ -1,4 +1,4 @@
-(* Copyright (C) 2014--2016  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2014--2019  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
   open Lwt.Infix
   open Inhca_admin_services
   open Inhca_data
-  module Time_format = CalendarLib.Printer.Calendar
 ]
 [%%server
   open Printf
@@ -28,6 +27,11 @@
   open Js_of_ocaml
   open Unprime_list
 ]
+
+let%shared string_of_ptime t =
+  let tz_offset_s = Ptime_clock.current_tz_offset_s () in
+  let pp = Ptime.pp_human ?tz_offset_s () in
+  Fmt.to_to_string pp t
 
 let reword_openssl_error = function
  | Ok () ->
@@ -64,7 +68,7 @@ let%client tds_of_enrollment enrollment_link delete_handler enr =
     D.td [enrollment_link enr];
     D.td [D.txt Enrollment.(string_of_state (state enr))];
     D.td ~a:[F.a_class [expiration_class]] [
-      D.txt (Time_format.to_string (Enrollment.expiration_time enr))
+      D.txt (string_of_ptime (Enrollment.expiration_time enr))
     ];
     D.td [D.txt Enrollment.(cn enr)];
     D.td [D.txt Enrollment.(email enr)];
@@ -223,11 +227,11 @@ let admin_handler () () =
     F.tr [
       F.td [F.txt (sprintf "%02x" serial)];
       F.td [F.txt (Issue.string_of_state state)];
-      F.td [F.txt (Time_format.to_string (Issue.expired issue))];
+      F.td [F.txt (string_of_ptime (Issue.expired issue))];
       F.td
         (match Issue.revoked issue with
          | None -> []
-         | Some d -> [F.txt (Time_format.to_string d)]);
+         | Some d -> [F.txt (string_of_ptime d)]);
       F.td [F.txt (Issue.dn issue)];
       F.td control;
     ] in

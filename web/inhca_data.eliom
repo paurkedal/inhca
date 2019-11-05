@@ -1,4 +1,4 @@
-(* Copyright (C) 2014--2016  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2014--2019  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,7 +15,6 @@
  *)
 
 [%%shared.start]
-module Time = CalendarLib.Calendar
 
 module Enrollment_base = struct
 
@@ -50,10 +49,14 @@ module Enrollment_base = struct
   let token enr = enr.token
   let state enr = enr.state
   let expiration enr = enr.expiration
-  let expiration_time enr = Time.from_unixfloat enr.expiration
+  let expiration_time enr =
+    (match Ptime.of_float_s enr.expiration with
+     | None -> invalid_arg "Expiration time is out of range."
+     | Some t -> t)
   let cn enr = enr.cn
   let email enr = enr.email
-  let has_expired enr = enr.expiration < Unix.time ()
+  let has_expired enr =
+    Ptime.compare (expiration_time enr) (Ptime_clock.now ()) < 0
 end
 
 module%client Enrollment = Enrollment_base

@@ -1,4 +1,4 @@
-(* Copyright (C) 2016  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2016--2019  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,10 +40,10 @@ module Issue : sig
   val state : t -> state
   (** The current state of an issued certificate. *)
 
-  val expired : t -> CalendarLib.Calendar.t
+  val expired : t -> Ptime.t
   (** The expiration time of the certificate. *)
 
-  val revoked : t -> CalendarLib.Calendar.t option
+  val revoked : t -> Ptime.t option
   (** The time the certificate was revoked if any. *)
 
   val serial : t -> int
