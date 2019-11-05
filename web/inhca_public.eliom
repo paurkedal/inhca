@@ -131,37 +131,6 @@ let with_enrollment f get post =
           "The link has been deleted or is invalid. \
            Please ask for a new link if needed."
 
-let keygen_form enr =
-  F.Form.post_form ~service:issue_spkac_service @@
-  fun spkac -> [
-    F.p [
-      F.txt
-        "Using this page, your browser will request a certificate which \
-         will be immediately installed in your current browser, but you \
-         can export and import it into another browser if needed. ";
-      F.txt
-        "This method is not supported by recent versions of Chrome and \
-         Chromium or any version of Internet Explorer, \
-         but should still work for Firefox and Safari.";
-    ];
-    F.table ~a:[F.a_class ["assoc"]] [
-      F.tr [th_p "Full name:"; F.td [F.txt (Enrollment.cn enr)]];
-      F.tr [th_p "Email:"; F.td [F.txt (Enrollment.email enr)]];
-      F.tr [
-        th_p "Key strength:";
-        F.td [
-          F.keygen
-            ~a:[F.a_name (Eliom_parameter.string_of_param_name spkac)] ()
-        ]
-      ];
-      F.tr ~a:[F.a_class ["submit"]] [
-        F.td [];
-        F.td [F.Form.input ~input_type:`Submit
-                           ~value:"Install certificate" F.Form.string]
-      ]
-    ]
-  ]
-
 let server_generates_form =
   F.Form.post_form ~service:issue_pkcs12_service ~a:[F.a_autocomplete false] @@
   fun (password, password') -> [
@@ -193,16 +162,7 @@ let token_login_handler token () =
 
 let acquire_handler ?error =
   with_enrollment @@ fun enrollment () () ->
-  let content =
-    if Inhca_config.enable_keygen_cp#get then [
-      F.h2 [F.txt "Generate Key and Certificate Request in Browser"];
-      keygen_form enrollment ();
-      F.h2 [F.txt "Let the Server Generate the Key and Request"];
-      server_generates_form ();
-    ] else [
-      server_generates_form ();
-    ]
-  in
+  let content = [server_generates_form ()] in
   Inhca_tools.F.send_page ~title:"Acquire Certificate"
     (match error with
      | Some error -> F.div ~a:[F.a_class ["error"]] error :: content

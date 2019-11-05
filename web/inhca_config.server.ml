@@ -33,9 +33,5 @@ let enrollment_expiration_cp =
     ~group ["enrollment"; "expiration_time"] 259200.0
     "Time in seconds before a new enrollment expires."
 
-let enable_keygen_cp =
-  new Config_file.bool_cp ~group ["web"; "enable_keygen"] false
-    "Enable the <keygen/> method for delivering certificates."
-
 let () =
   group#read (Filename.concat (Ocsigen_config.get_datadir ()) "inhca.conf")
