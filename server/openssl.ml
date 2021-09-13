@@ -17,34 +17,37 @@
 open Lwt.Infix
 open Printf
 
-module Log =
-  Inhca_tools.Local_log (struct let section_name = "inhca:openssl" end)
+let log_src = Logs.Src.create "inhca.openssl"
+module Log = (val Logs_lwt.src_log log_src)
 
-let string_of_command command =
-  let quoted s =
-    if String.length s > 0 && s.[0] = '-' then s else
-    "\"" ^ String.escaped s ^ "\"" in
-  String.concat " " (List.map quoted (Array.to_list (snd command)))
+let pp_command ppf command =
+  let pp_arg ppf s =
+    if String.length s > 0 && s.[0] = '-' then Fmt.string ppf s else
+    Fmt.quote Fmt.string ppf (String.escaped s)
+  in
+  Fmt.array ~sep:Fmt.sp pp_arg ppf (snd command)
 
 type error = Lwt_process.command * Unix.process_status * string list
 
 let log_error (command, pst, msgs) =
   (match pst with
    | Unix.WEXITED i ->
-      Log.error_f "Command exited with %d: %s." i (string_of_command command)
+      Log.err (fun f ->
+        f "Command exited with %d: %a." i pp_command command)
    | Unix.WSIGNALED i ->
-      Log.error_f "Command terminated by signal %d: %s"
-                  i (string_of_command command)
+      Log.err (fun f ->
+        f "Command terminated by signal %d: %a" i pp_command command)
    | Unix.WSTOPPED i ->
-      Log.error_f "Command stopped by signal %d: %s"
-                  i (string_of_command command))
-   >>= fun () -> Lwt_list.iter_s (Log.error_f "Stderr: %s") msgs
+      Log.err (fun f ->
+        f "Command stopped by signal %d: %a" i pp_command command))
+   >>= fun () ->
+  Lwt_list.iter_s (fun msg -> Log.err (fun f -> f "Stderr: %s" msg)) msgs
 
-let get_cadir () = Filename.concat (Ocsigen_config.get_datadir ()) "CA"
+let get_cadir () = Config.(global.ca_dir)
 let get_capath fp = Filename.concat (get_cadir ()) fp
 let get_newcertpath i =
   Filename.concat (get_capath "newcerts") (sprintf "%02X.pem" i)
-let get_tmpdir () = Filename.concat (Ocsigen_config.get_datadir ()) "tmp"
+let get_tmpdir () = Config.(global.tmp_dir)
 let get_tmppath fp = Filename.concat (get_tmpdir ()) fp
 let () =
   if not (Sys.file_exists (get_tmpdir ())) then Unix.mkdir (get_tmpdir ()) 0o700
@@ -135,7 +138,7 @@ let read_lines ic =
 
 let exec_openssl subcommand args =
   let command = openssl_command subcommand args in
-  Log.debug_f "Exec: openssl %s" (string_of_command command) >>= fun () ->
+  Log.debug (fun f -> f "Exec: openssl %a" pp_command command) >>= fun () ->
   match%lwt
     Lwt_process.with_process_full command @@ fun proc ->
       Lwt_io.close proc#stdout >>= fun () ->
@@ -144,14 +147,15 @@ let exec_openssl subcommand args =
       Lwt.return (status, stderr)
   with
    | Unix.WEXITED 0, stderr ->
-      Lwt_list.iter_s Log.info stderr >>= fun () ->
+      Lwt_list.iter_s (fun line -> Log.info (fun f -> f "%s" line)) stderr
+        >>= fun () ->
       Lwt.return (Ok ())
    | pst, stderr ->
       Lwt.return (Error (command, pst, stderr))
 
 let pread_openssl subcommand args =
   let command = openssl_command subcommand args in
-  Log.debug_f "Exec: openssl %s" (string_of_command command) >>= fun () ->
+  Log.debug (fun f -> f "Exec: openssl %a" pp_command command) >>= fun () ->
   match%lwt
     Lwt_process.with_process_full command @@ fun proc ->
       let%lwt stdout = Lwt_io.read proc#stdout
@@ -160,14 +164,15 @@ let pread_openssl subcommand args =
       Lwt.return (status, stdout, stderr)
   with
    | Unix.WEXITED 0, stdout, stderr ->
-      Lwt_list.iter_s Log.info stderr >>= fun () ->
+      Lwt_list.iter_s (fun line -> Log.info (fun f -> f "%s" line)) stderr
+        >>= fun () ->
       Lwt.return (Ok stdout)
    | pst, _, stderr ->
       Lwt.return (Error (command, pst, stderr))
 
 let pmap_openssl subcommand args input =
   let command = openssl_command subcommand args in
-  Log.debug_f "Exec: openssl %s" (string_of_command command) >>= fun () ->
+  Log.debug (fun f -> f "Exec: openssl %a" pp_command command) >>= fun () ->
   match%lwt
     Lwt_process.with_process_full command @@ fun proc ->
       let%lwt () =
@@ -178,7 +183,8 @@ let pmap_openssl subcommand args input =
       Lwt.return (status, stdout, stderr)
   with
    | Unix.WEXITED 0, stdout, stderr ->
-      Lwt_list.iter_s Log.info stderr >>= fun () ->
+      Lwt_list.iter_s (fun line -> Log.info (fun f -> f "%s" line)) stderr
+        >>= fun () ->
       Lwt.return (Ok stdout)
    | pst, _, stderr ->
       Lwt.return (Error (command, pst, stderr))
@@ -200,8 +206,8 @@ let pread_openssl_ca args =
   let config = get_capath "openssl.cnf" in
   pread_openssl "ca" ("-config" :: config :: args)
 
-let save_spkac comps fp = Lwt_io.with_file ~mode:Lwt_io.output fp
-  begin fun oc ->
+let save_spkac comps fp =
+  Lwt_io.with_file ~mode:Lwt_io.output fp begin fun oc ->
     let comp_counters = Hashtbl.create 8 in
     Lwt_list.iter_s
       begin fun (k, v) ->

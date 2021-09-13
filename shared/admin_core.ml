@@ -1,4 +1,4 @@
-(* Copyright (C) 2019  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2023  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,9 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-val token_login_service :
-  ( string, unit, Eliom_service.get, Eliom_service.att,
-    Eliom_service.non_co, Eliom_service.non_ext, Eliom_service.reg,
-    [ `WithSuffix ], [ `One of string ] Eliom_parameter.param_name,
-    unit, Eliom_service.non_ocaml )
-  Eliom_service.t
+let string_of_ptime t =
+  let tz_offset_s = Ptime_clock.current_tz_offset_s () in
+  let pp = Ptime.pp_human ?tz_offset_s () in
+  Fmt.to_to_string pp t

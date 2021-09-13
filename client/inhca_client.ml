@@ -1,4 +1,4 @@
-(* Copyright (C) 2019  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2023  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,15 +14,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module Dn : sig
+[@@@warning "-33"]
 
-  type rdn = X509.Distinguished_name.Relative_distinguished_name.t
-  type t = X509.Distinguished_name.t
-
-  val cn : string -> rdn
-
-  val of_string : string -> t
-
-  val to_string : t -> string
-
-end
+open Admin
