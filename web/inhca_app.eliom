@@ -22,6 +22,7 @@ include Eliom_registration.App (struct
 end)
 
 let () =
+  Mirage_crypto_rng_lwt.initialize ();
   let lwt_log =
     try Some (Sys.getenv "LWT_LOG") with Not_found -> None in
   let lwt_log_js =

@@ -19,6 +19,9 @@ open Inhca_data
 open Inhca_prereq
 open Lwt.Infix
 
+module Log =
+  Inhca_tools.Local_log (struct let section_name = "inhca:public" end)
+
 let base_dn_str = Inhca_config.subject_base_dn#get
 
 let base_dn = Dn.of_string base_dn_str
@@ -152,43 +155,49 @@ let acquire_handler ?error =
 
 let issue_pkcs12_handler =
   with_enrollment @@ fun enr () (password, password') ->
-  Nocrypto_entropy_lwt.initialize () >>= fun () ->
   if password <> password' then
     let error = [F.txt "Passwords didn't match."] in
     acquire_handler ~error () () else
   let key_size = 4096 in
   let digest = `SHA512 in
   let dn = Dn.cn (Enrollment.cn enr) :: base_dn in
-  let key = `RSA (Nocrypto.Rsa.generate key_size) in
-  let csr = X509.Signing_request.create dn ~digest key in
-  let key_pem = X509.Private_key.encode_pem key in
-  let csr_pem = X509.Signing_request.encode_pem csr in
-  match%lwt
-    Inhca_openssl.sign_pem ~token:(Enrollment.token enr)
-                           (Cstruct.to_string csr_pem)
-  with
-   | Error error ->
-      let enr = Enrollment.update ~state:Enrollment.Failed enr in
-      Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
-      Inhca_openssl.log_error error >>= fun () ->
+  let key = `RSA (Mirage_crypto_pk.Rsa.generate ~bits:key_size ()) in
+  (match X509.Signing_request.create dn ~digest key with
+   | Error (`Msg msg) ->
+      Log.error_f "Failed to create CSR: %s" msg >>= fun () ->
       Inhca_tools.F.send_error ~code:500
-        "Signing failed, please contact site admin."
-   | Ok crt_pem ->
-      let enr = Enrollment.update ~state:Enrollment.Acquired enr in
-      Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
-      match%lwt
-        Inhca_openssl.export_pkcs12 ~password ~cert:crt_pem
-                                    ~certkey:(Cstruct.to_string key_pem) ()
-      with
-       | Ok pkcs12 ->
-          Eliom_registration.String.send
-              ~content_type:"application/x-pkcs12"
-              (pkcs12, "application/x-pkcs12")
-            >|= Eliom_registration.cast_unknown_content_kind
+        "Failed to create certificate signing request, \
+         please contact site admin."
+   | Ok csr ->
+      let key_pem = X509.Private_key.encode_pem key in
+      let csr_pem = X509.Signing_request.encode_pem csr in
+      (match%lwt
+        Inhca_openssl.sign_pem ~token:(Enrollment.token enr)
+                               (Cstruct.to_string csr_pem)
+       with
        | Error error ->
+          let enr = Enrollment.update ~state:Enrollment.Failed enr in
+          Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
           Inhca_openssl.log_error error >>= fun () ->
           Inhca_tools.F.send_error ~code:500
-            "Failed to deliver key and certificate, please contact side admin."
+            "Signing failed, please contact site admin."
+       | Ok crt_pem ->
+          let enr = Enrollment.update ~state:Enrollment.Acquired enr in
+          Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
+          (match%lwt
+            Inhca_openssl.export_pkcs12 ~password ~cert:crt_pem
+                                        ~certkey:(Cstruct.to_string key_pem) ()
+           with
+           | Ok pkcs12 ->
+              Eliom_registration.String.send
+                  ~content_type:"application/x-pkcs12"
+                  (pkcs12, "application/x-pkcs12")
+                >|= Eliom_registration.cast_unknown_content_kind
+           | Error error ->
+              Inhca_openssl.log_error error >>= fun () ->
+              Inhca_tools.F.send_error ~code:500
+                "Failed to deliver key and certificate, \
+                 please contact side admin.")))
 
 let cacert_handler () () = Lwt.return Inhca_openssl.cacert_path
 
