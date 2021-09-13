@@ -1,0 +1,31 @@
+(library
+ (name inhca_web_server)
+ (preprocess (pps
+    js_of_ocaml-ppx_deriving_json
+    lwt_ppx
+    ppx_deriving_rpc
+    ppx_deriving_yojson
+    ppx_sexp_conv))
+ (libraries
+    fd-send-recv
+    decoders-yojson
+    fmt
+    jose
+    logs
+    logs.lwt
+    lwt
+    mirage-crypto-rng
+    mirage-crypto-rng-lwt
+    opium
+    prime
+    ptime
+    ptime.clock.os
+    rock
+    rpclib.core
+    rpclib.json
+    rpclib-lwt
+    sqlite3
+    tyxml
+    x509))
+
+(copy_files# ../shared/*.{ml,mli})

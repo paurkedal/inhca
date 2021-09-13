@@ -6,20 +6,35 @@ license: "GPL-3.0-or-later"
 homepage: "https://github.com/paurkedal/inhca/"
 bug-reports: "https://github.com/paurkedal/inhca/issues"
 depends: [
-  "ocaml"
   "decoders-yojson"
-  "eliom" {>= "10.0.0"}
+  "dune" {>= "2.8.5"}
   "fd-send-recv"
   "fmt"
   "jose"
+  "js_of_ocaml-compiler"
+  "js_of_ocaml-ppx"
+  "js_of_ocaml-ppx_deriving_json"
+  "js_of_ocaml-tyxml"
+  "lwt"
+  "lwt_ppx"
+  "logs"
   "mirage-crypto-pk"
   "mirage-crypto-rng" {>= "2.0.0"}
-  "ocamlfind" {build}
+  "ocaml" {>= "4.04.0"}
+  "opium" {>= "0.20.0"}
+  "ppx_deriving_rpc"
+  "ppx_sexp_conv"
   "prime"
   "ptime"
-  "topkg" {build}
+  "rpclib"
+  "rpclib-lwt"
   "x509" {>= "0.8.1"}
 ]
-build: ["ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%"]
+build: [
+  ["dune" "build" "-p" name "-j" jobs "@install"]
+  ["dune" "install" "-p" name "--create-install-file" name]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+  ["dune" "build" "@doc" "-p" name "-j" jobs] {with-doc}
+]
 dev-repo: "git+https://github.com/paurkedal/inhca.git"
 synopsis: "Simple online CA for in-house use"

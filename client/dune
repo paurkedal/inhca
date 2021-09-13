@@ -1,0 +1,20 @@
+(executable
+ (name inhca_client)
+ (preprocess (pps js_of_ocaml-ppx ppx_deriving_rpc))
+ (modes js)
+ (libraries
+    fmt
+    js_of_ocaml
+    js_of_ocaml-lwt
+    js_of_ocaml-tyxml
+    logs
+    lwt
+    prime
+    prime.unstable
+    ptime
+    ptime.clock.os
+    rpclib.core
+    rpclib.json
+    rpclib-lwt))
+
+(copy_files# ../shared/*.{ml,mli})

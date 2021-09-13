@@ -1,4 +1,4 @@
-(* Copyright (C) 2016  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2021--2024  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,20 +14,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Unprime_option
+include module type of (struct include Enrollment_core end)
 
-include Eliom_registration.App (struct
-  let application_name = "inhca"
-  let global_data_path = None
-end)
+val create : cn: string -> email: string -> unit -> t
 
-let () =
-  Mirage_crypto_rng_unix.use_default ();
-  let lwt_log =
-    try Some (Sys.getenv "LWT_LOG") with Not_found -> None in
-  let lwt_log_js =
-    try Some (Sys.getenv "LWT_LOG_JS") with Not_found -> lwt_log in
-  Option.iter Eliom_lib.Lwt_log.load_rules lwt_log;
-  Option.iter
-    (fun rules -> Inhca_tools.ignore_cv [%client Lwt_log_js.load_rules ~%rules])
-    lwt_log_js
+val update : state: state -> t -> t
+
+val has_expired : t -> bool
+
+val ocsipersist_table : t Ocsipersist.table Lwt.t
+
+val save : t -> (unit, 'err) result Lwt.t
+
+val save_exn : t -> unit Lwt.t
+
+val delete : t -> (unit, 'err) result Lwt.t
+
+val all : unit -> (t list, 'err) result Lwt.t
+
+(* FIXME
+val edit_bus : (edit_message, edit_message) Eliom_bus.t
+*)
