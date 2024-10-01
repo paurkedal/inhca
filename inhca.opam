@@ -11,6 +11,7 @@ depends: [
   "eliom" {>= "6.0.0" & < "7~"}
   "fd-send-recv"
   "fmt"
+  "mirage-crypto-rng-lwt"
   "ocamlfind" {build}
   "prime"
   "ptime"
