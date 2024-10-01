@@ -120,7 +120,7 @@ end
 (* Process Helpers *)
 
 let save_file content fp =
-  Lwt_io.with_file Lwt_io.output fp (fun oc -> Lwt_io.write oc content)
+  Lwt_io.(with_file ~mode:output) fp (fun oc -> Lwt_io.write oc content)
 
 let openssl_command cmd args =
   let argv = Array.of_list ("openssl" :: cmd :: args) in
