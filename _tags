@@ -2,13 +2,12 @@ true: bin_annot
 true: \
     package(fmt), \
     package(prime.unstable), \
-    package(ptime)
+    package(ptime), \
+    package(ptime.clock)
 <web/server/*>: \
     package(config-file), \
     package(eliom.server), \
     package(fd-send-recv), \
-    package(ptime.clock), \
     package(x509)
 <web/client/*>: \
-    package(eliom.client), \
-    package(ptime.clock)
+    package(eliom.client)

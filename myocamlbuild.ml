@@ -14,11 +14,7 @@ let () = Ocamlbuild_plugin.dispatch @@ fun hook ->
   M.dispatcher ~oasis_executables hook;
   (match hook with
    | After_rules ->
-      flag ["ocaml"; "compile"] & S[A"-w"; A"+K-39"];
-      flag ["js_of_ocaml"] & S[
-        A"+js_of_ocaml-compiler/runtime.js";
-        A"+ptime.clock/runtime.js"
-      ]
+      flag ["ocaml"; "compile"] & S[A"-w"; A"+K-39"]
    | Before_options ->
       Options.make_links := false
    | _ -> ())

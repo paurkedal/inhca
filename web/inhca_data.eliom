@@ -91,7 +91,7 @@ type edit_message =
 open Lwt.Infix
 
 let enrollment_table : Enrollment.t Ocsipersist.table Lwt.t =
-  Ocsipersist.open_table "enrollment"
+  Ocsipersist.Polymorphic.open_table "enrollment"
 
 let edit_bus = Eliom_bus.create [%json: edit_message]
 
@@ -100,9 +100,9 @@ let () = Lwt.async @@ fun () ->
   Lwt_stream.iter_s
     (function
      | `Add enr ->
-        Ocsipersist.add enrollment_table (Enrollment.token enr) enr
+        Ocsipersist.Polymorphic.add enrollment_table (Enrollment.token enr) enr
      | `Update enr ->
-        Ocsipersist.add enrollment_table (Enrollment.token enr) enr
+        Ocsipersist.Polymorphic.add enrollment_table (Enrollment.token enr) enr
      | `Remove enr ->
-        Ocsipersist.remove enrollment_table (Enrollment.token enr))
+        Ocsipersist.Polymorphic.remove enrollment_table (Enrollment.token enr))
     (Eliom_bus.stream edit_bus)

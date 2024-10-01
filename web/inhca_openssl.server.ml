@@ -200,7 +200,7 @@ let pread_openssl_ca args =
   let config = get_capath "openssl.cnf" in
   pread_openssl "ca" ("-config" :: config :: args)
 
-let save_spkac comps fp = Lwt_io.with_file Lwt_io.output fp
+let save_spkac comps fp = Lwt_io.with_file ~mode:Lwt_io.output fp
   begin fun oc ->
     let comp_counters = Hashtbl.create 8 in
     Lwt_list.iter_s

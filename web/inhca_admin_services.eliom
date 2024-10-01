@@ -29,8 +29,9 @@ let admin_server_function json f =
 
 let list_enrollments () =
   enrollment_table >>= fun enrollment_table ->
-  Ocsipersist.fold_step (fun k r rs -> Lwt.return (r :: rs))
-                        enrollment_table []
+  Ocsipersist.Polymorphic.fold_step
+    (fun k r rs -> Lwt.return (r :: rs))
+    enrollment_table []
 
 let%client list_enrollments =
   ~%(admin_server_function [%json: unit] list_enrollments)

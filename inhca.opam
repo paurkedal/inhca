@@ -8,6 +8,7 @@ bug-reports: "https://github.com/paurkedal/inhca/issues"
 depends: [
   "ocaml"
   "config-file"
+  "mirage-crypto-rng-lwt"
   "eliom" {>= "6.0.0" & < "7~"}
   "fd-send-recv"
   "fmt"

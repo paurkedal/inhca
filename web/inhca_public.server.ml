@@ -78,7 +78,7 @@ let with_enrollment f get post =
       in
       try%lwt
         let%lwt enrollment_table = enrollment_table in
-        let%lwt enr = Ocsipersist.find enrollment_table token in
+        let%lwt enr = Ocsipersist.Polymorphic.find enrollment_table token in
         match Enrollment.state enr with
          | Enrollment.Prepared ->
             if Enrollment.has_expired enr then send_expired () else
@@ -117,7 +117,7 @@ let with_enrollment f get post =
            Please ask for a new link if needed."
 
 let server_generates_form =
-  F.Form.post_form ~service:issue_pkcs12_service ~a:[F.a_autocomplete false] @@
+  F.Form.post_form ~service:issue_pkcs12_service ~a:[F.a_autocomplete `Off] @@
   fun (password, password') -> [
     F.p [
       F.txt
@@ -172,8 +172,7 @@ let issue_pkcs12_handler =
       let key_pem = X509.Private_key.encode_pem key in
       let csr_pem = X509.Signing_request.encode_pem csr in
       (match%lwt
-        Inhca_openssl.sign_pem ~token:(Enrollment.token enr)
-                               (Cstruct.to_string csr_pem)
+        Inhca_openssl.sign_pem ~token:(Enrollment.token enr) csr_pem
        with
        | Error error ->
           let enr = Enrollment.update ~state:Enrollment.Failed enr in
@@ -185,8 +184,8 @@ let issue_pkcs12_handler =
           let enr = Enrollment.update ~state:Enrollment.Acquired enr in
           Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
           (match%lwt
-            Inhca_openssl.export_pkcs12 ~password ~cert:crt_pem
-                                        ~certkey:(Cstruct.to_string key_pem) ()
+            Inhca_openssl.export_pkcs12
+              ~password ~cert:crt_pem ~certkey:key_pem ()
            with
            | Ok pkcs12 ->
               Eliom_registration.String.send

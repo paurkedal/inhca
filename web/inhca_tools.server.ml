@@ -40,21 +40,23 @@ module F = struct
 end
 
 let http_error code msg =
-  Lwt.fail (Ocsigen_http_frame.Http_error.Http_exception (code, Some msg, None))
+  Lwt.fail (Ocsigen_cohttp.Ext_http_error (code, Some msg, None))
+
 let http_error_f code fmt = ksprintf (http_error code) fmt
 
 let authorize_admin () =
   match Inhca_config.auth_http_header_cp#get with
   | None -> Lwt.return_unit
-  | Some h ->
-    let ri = Eliom_request_info.get_ri () in
-    let frame = Ocsigen_extensions.Ocsigen_request_info.http_frame ri in
-    let%lwt user =
-      try Lwt.return (Ocsigen_headers.find h frame)
-      with Not_found -> http_error 500 "Missing authentication header." in
-    if List.mem user Inhca_config.auth_admins_cp#get
-    then Lwt_log.info_f "Authorized %s." user
-    else http_error 403 "Admin access required."
+  | Some header_name ->
+    let header_name = Ocsigen_header.Name.of_string header_name in
+    let request = Eliom_request_info.get_ri () in
+    (match Ocsigen_request.header request header_name with
+     | Some user ->
+        if List.mem user Inhca_config.auth_admins_cp#get
+        then Lwt_log.info_f "Authorized %s." user
+        else http_error `Forbidden "Admin access required."
+     | None ->
+        http_error `Internal_server_error "Missing authentication header.")
 
 module Local_log (Spec : sig val section_name : string end) = struct
   let section = Lwt_log.Section.make Spec.section_name
