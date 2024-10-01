@@ -7,8 +7,8 @@ true: \
     package(config-file), \
     package(eliom.server), \
     package(fd-send-recv), \
-    package(ptime.clock.os), \
+    package(ptime.clock), \
     package(x509)
 <web/client/*>: \
     package(eliom.client), \
-    package(ptime.clock.jsoo)
+    package(ptime.clock)
