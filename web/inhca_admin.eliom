@@ -41,14 +41,14 @@ let reword_openssl_error = function
     Lwt.return (Error "openssl command failed, see log for details.")
 
 let revoke_serial_sf serial =
-  Inhca_tools.authorize_admin () >>= fun () ->
+  Inhca_tools.authorize_admin_exn @@ fun () ->
   Inhca_openssl.revoke_serial serial >>= reword_openssl_error
 
 let%client revoke_serial =
   ~%(Eliom_client.server_function [%json: int] revoke_serial_sf)
 
 let updatedb_sf () =
-  Inhca_tools.authorize_admin () >>= fun () ->
+  Inhca_tools.authorize_admin_exn @@ fun () ->
   Inhca_openssl.updatedb () >>= reword_openssl_error
 
 let%client updatedb =
@@ -145,7 +145,7 @@ let%client admin_handler_client enr_table edit_bus =
   end
 
 let admin_handler () () =
-  Inhca_tools.authorize_admin () >>= fun () ->
+  Inhca_tools.authorize_admin @@ fun () ->
 
   let cn_input : Html_types.input elt =
     D.input ~a:[D.a_input_type `Text] () in
@@ -239,13 +239,12 @@ let admin_handler () () =
   let%lwt issue_trs = Lwt_stream.to_list @@
     Lwt_stream.map issue_tr (Inhca_openssl.Issue.load_all ()) in
 
-  Lwt.return
-    (Inhca_tools.F.page ~title:"Pending Certificate Requests" [
-      F.h2 [F.txt "Pending Requests"];
-      enr_table;
-      F.h2 [F.txt "Issued Certificates"];
-      F.table ~a:[F.a_class ["std"]] (issue_header_tr :: issue_trs);
-    ])
+  Lwt.return @@ Inhca_tools.F.page ~title:"Pending Certificate Requests" [
+    F.h2 [F.txt "Pending Requests"];
+    enr_table;
+    F.h2 [F.txt "Issued Certificates"];
+    F.table ~a:[F.a_class ["std"]] (issue_header_tr :: issue_trs);
+  ]
 
 let () =
   Inhca_app.register ~service:admin_service admin_handler

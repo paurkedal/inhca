@@ -25,7 +25,7 @@ let%client admin_service = ~%admin_service
 
 let admin_server_function json f =
   Eliom_client.server_function json
-    (fun args -> Inhca_tools.authorize_admin () >>= fun () -> f args)
+    (fun args -> Inhca_tools.authorize_admin_exn @@ fun () -> f args)
 
 let list_enrollments () =
   enrollment_table >>= fun enrollment_table ->

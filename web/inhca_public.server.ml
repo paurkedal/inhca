@@ -165,7 +165,7 @@ let issue_pkcs12_handler =
   (match X509.Signing_request.create dn ~digest key with
    | Error (`Msg msg) ->
       Log.error_f "Failed to create CSR: %s" msg >>= fun () ->
-      Inhca_tools.F.send_error ~code:500
+      Inhca_tools.F.send_error_page ~code:500
         "Failed to create certificate signing request, \
          please contact site admin."
    | Ok csr ->
@@ -178,7 +178,7 @@ let issue_pkcs12_handler =
           let enr = Enrollment.update ~state:Enrollment.Failed enr in
           Eliom_bus.write edit_bus (`Update enr) >>= fun () ->
           Inhca_openssl.log_error error >>= fun () ->
-          Inhca_tools.F.send_error ~code:500
+          Inhca_tools.F.send_error_page ~code:500
             "Signing failed, please contact site admin."
        | Ok crt_pem ->
           let enr = Enrollment.update ~state:Enrollment.Acquired enr in
@@ -194,7 +194,7 @@ let issue_pkcs12_handler =
                 >|= Eliom_registration.cast_unknown_content_kind
            | Error error ->
               Inhca_openssl.log_error error >>= fun () ->
-              Inhca_tools.F.send_error ~code:500
+              Inhca_tools.F.send_error_page ~code:500
                 "Failed to deliver key and certificate, \
                  please contact side admin.")))
 

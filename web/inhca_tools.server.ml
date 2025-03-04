@@ -26,28 +26,24 @@ module F = struct
     (Eliom_tools.F.html ~title ~css:[["inhca.css"]]
       (Html.F.body (Html.F.h1 [Html.F.txt title] :: contents)))
 
-  let send_error ~code msg =
+  let error_page ~code msg =
     let hdr = sprintf "Error %d" code in
-    Eliom_registration.Html.send ~code
-      (Eliom_tools.F.html ~title:hdr ~css:[["inhca.css"]]
-        Html.F.(body [h1 [txt hdr]; p [txt msg]]))
+    Eliom_tools.F.html ~title:hdr ~css:[["inhca.css"]]
+      Html.F.(body [h1 [txt hdr]; p [txt msg]])
+
+  let send_error_page ~code msg =
+    Eliom_registration.Html.send ~code (error_page ~code msg)
 
   let send_page ?code ~title contents =
     let title =
       (match code with
        | None -> title
-       | Some code -> sprintf "Error %d, %s" code title) in
+       | Some code -> sprintf "Error %d, %s" code title)
+    in
     Eliom_registration.Html.send ?code (page ~title contents)
 end
 
-let http_error code msg =
-  Lwt.fail (Ocsigen_cohttp.Ext_http_error (code, Some msg, None))
-
-let http_error_f code fmt = ksprintf (http_error code) fmt
-
 let authorization_hdr = Ocsigen_header.Name.of_string "Authorization"
-let unauthorized msg =
-  raise (Ocsigen_cohttp.Ext_http_error (`Unauthorized, Some msg, None))
 
 let authenticate () =
   let request = Eliom_request_info.get_ri () in
@@ -59,34 +55,53 @@ let authenticate () =
           let now = Ptime_clock.now () in
           (match Jose.Jwt.of_string ~jwk ~now token with
            | Ok jwt ->
-              Jose.Jwt.get_string_claim jwt "sub"
+              Ok (Jose.Jwt.get_string_claim jwt "sub")
            | Error `Expired ->
-              unauthorized "The bearer token has expired."
+              Error "The bearer token has expired."
            | Error `Invalid_signature ->
-              unauthorized "The signature of the bearer token is invalid."
+              Error "The signature of the bearer token is invalid."
            | Error (`Msg msg) ->
-              unauthorized ("Bad bearer token: " ^ msg)
+              Error ("Bad bearer token: " ^ msg)
            | Error `Not_json ->
-              unauthorized "Bearer token data is not JSON."
+              Error "Bearer token data is not JSON."
            | Error `Not_supported ->
-              unauthorized "Bearer token format unsupported.")
+              Error "Bearer token format unsupported.")
        | _ ->
-          unauthorized "Authorization header is not a bearer token.")
+          Error "Authorization header is not a bearer token.")
    | None, _ | _, None ->
       (match Inhca_config.(global.authn_http_header) with
-       | None -> None
+       | None ->
+          Error "Authentication not configured."
        | Some header_name ->
           let header_name = Ocsigen_header.Name.of_string header_name in
-          Ocsigen_request.header request header_name))
+          Ok (Ocsigen_request.header request header_name)))
 
-let authorize_admin () =
+let authorize_admin' ~on_error handler =
   (match authenticate () with
-   | Some user ->
-      if List.mem user Inhca_config.(global.authz_admins)
-      then Lwt_log.info_f "Authorized %s." user
-      else http_error `Forbidden "Admin access required."
-   | None ->
-      http_error `Internal_server_error "Missing authentication header.")
+   | Ok (Some user) ->
+      if List.mem user Inhca_config.(global.authz_admins) then
+        Lwt_log.info_f "Allowing admin acces for %s." user >>= fun () ->
+        handler ()
+      else
+        Lwt_log.info_f "Denying admin access for %s." user >>= fun () ->
+        on_error ~code:403 "Admin access required."
+   | Ok None ->
+      on_error ~code:401 "Not authenticated."
+   | Error msg ->
+      on_error ~code:401 msg)
+
+let authorize_admin handler =
+  let on_error ~code msg = Lwt.return (F.error_page ~code msg) in
+  authorize_admin' ~on_error handler
+
+let authorize_admin_exn handler =
+  let on_error ~code msg =
+    (match Cohttp.Code.status_of_code code with
+     | #Cohttp.Code.status as status ->
+        Lwt.fail (Ocsigen_cohttp.Ext_http_error (status, Some msg, None))
+     | `Code _ -> assert false)
+  in
+  authorize_admin' ~on_error handler
 
 module Local_log (Spec : sig val section_name : string end) = struct
   let section = Lwt_log.Section.make Spec.section_name
