@@ -5,8 +5,12 @@ requires = "
   eliom.server
   fd-send-recv
   ppx_deriving.runtime
-  prime prime.unstable
-  ptime ptime.clock
+  prime
+  prime.unstable
+  ptime
+  ptime.clock
+  mirage-crypto-pk
+  mirage-crypto-rng.unix
   x509
 "
 archive(byte) = "inhca.cma"
