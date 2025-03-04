@@ -16,6 +16,7 @@
 
 open Eliom_content
 open Printf
+open Lwt.Infix
 
 let ignore_cv (x : unit Eliom_client_value.t) = ignore x
 
@@ -44,19 +45,48 @@ let http_error code msg =
 
 let http_error_f code fmt = ksprintf (http_error code) fmt
 
+let authorization_hdr = Ocsigen_header.Name.of_string "Authorization"
+let unauthorized msg =
+  raise (Ocsigen_cohttp.Ext_http_error (`Unauthorized, Some msg, None))
+
+let authenticate () =
+  let request = Eliom_request_info.get_ri () in
+  (match Inhca_config.(global.authn_bearer_jwk),
+         Ocsigen_request.header request authorization_hdr with
+   | Some jwk, Some data ->
+      (match String.split_on_char ' ' data |> List.filter ((<>) "") with
+       | ["Bearer"; token] ->
+          let now = Ptime_clock.now () in
+          (match Jose.Jwt.of_string ~jwk ~now token with
+           | Ok jwt ->
+              Jose.Jwt.get_string_claim jwt "sub"
+           | Error `Expired ->
+              unauthorized "The bearer token has expired."
+           | Error `Invalid_signature ->
+              unauthorized "The signature of the bearer token is invalid."
+           | Error (`Msg msg) ->
+              unauthorized ("Bad bearer token: " ^ msg)
+           | Error `Not_json ->
+              unauthorized "Bearer token data is not JSON."
+           | Error `Not_supported ->
+              unauthorized "Bearer token format unsupported.")
+       | _ ->
+          unauthorized "Authorization header is not a bearer token.")
+   | None, _ | _, None ->
+      (match Inhca_config.(global.authn_http_header) with
+       | None -> None
+       | Some header_name ->
+          let header_name = Ocsigen_header.Name.of_string header_name in
+          Ocsigen_request.header request header_name))
+
 let authorize_admin () =
-  match Inhca_config.(global.auth_http_header) with
-  | None -> Lwt.return_unit
-  | Some header_name ->
-    let header_name = Ocsigen_header.Name.of_string header_name in
-    let request = Eliom_request_info.get_ri () in
-    (match Ocsigen_request.header request header_name with
-     | Some user ->
-        if List.mem user Inhca_config.(global.auth_admins)
-        then Lwt_log.info_f "Authorized %s." user
-        else http_error `Forbidden "Admin access required."
-     | None ->
-        http_error `Internal_server_error "Missing authentication header.")
+  (match authenticate () with
+   | Some user ->
+      if List.mem user Inhca_config.(global.authz_admins)
+      then Lwt_log.info_f "Authorized %s." user
+      else http_error `Forbidden "Admin access required."
+   | None ->
+      http_error `Internal_server_error "Missing authentication header.")
 
 module Local_log (Spec : sig val section_name : string end) = struct
   let section = Lwt_log.Section.make Spec.section_name

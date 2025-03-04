@@ -11,6 +11,7 @@ depends: [
   "eliom" {>= "10.0.0"}
   "fd-send-recv"
   "fmt"
+  "jose"
   "mirage-crypto-pk"
   "mirage-crypto-rng" {>= "2.0.0"}
   "ocamlfind" {build}

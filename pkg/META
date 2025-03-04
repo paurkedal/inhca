@@ -4,6 +4,7 @@ requires = "
   decoders-yojson
   eliom.server
   fd-send-recv
+  jose
   ppx_deriving.runtime
   prime
   prime.unstable

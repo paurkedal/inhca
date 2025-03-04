@@ -13,6 +13,7 @@ true: \
     package(decoders-yojson), \
     package(eliom.server), \
     package(fd-send-recv), \
+    package(jose), \
     package(mirage-crypto-pk), \
     package(mirage-crypto-rng.unix), \
     package(x509)

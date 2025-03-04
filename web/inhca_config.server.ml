@@ -20,24 +20,40 @@ type t = {
   subject_base_dn: string;
   (** Subject base DN. *)
 
-  auth_http_header: string option;
-  (** HTTP header used to identify a logged-in user (e.g. SSL_CLIENT_S_DN). *)
+  authn_bearer_jwk: Jose.Jwk.public Jose.Jwk.t option;
+  (** JWK for validating bearer JWT. *)
 
-  auth_admins: string list;
+  authn_http_header: string option;
+  (** Trusted HTTP header used to identify a logged-in user.  This is an
+      alternative to authn_bearer_jwk, which is suitable for testing or when
+      proxying through a frontend running on the same server. *)
+
+  authz_admins: string list;
   (** List of values for the given HTTP header which grant admin access. *)
 
   enrollment_expiration_time: float;
   (** Time in seconds before a new enrollment expires. *)
 }
 
+let bearer_jwk_decoder json =
+  let conv_error = function
+   | `Json_parse_failed msg -> Decoders.Error.make ("JSON parse error: " ^ msg)
+   | `Msg msg -> Decoders.Error.make ("JWK parse error: " ^ msg)
+   | `Unsupported_kty -> Decoders.Error.make "Unsupported JWK key type."
+  in
+  Jose.Jwk.of_pub_json (json : Yojson.Basic.t :> Yojson.Safe.t)
+    |> Result.map_error conv_error
+
 let decoder =
   let open Decode in
   let* subject_base_dn = field "subject_base_dn" string in
-  let* auth_http_header = field_opt "auth_http_header" string in
-  let* auth_admins = field_opt_or ~default:[] "auth_admins" (list string) in
+  let* authn_bearer_jwk = field_opt "authn_bearer_jwk" bearer_jwk_decoder in
+  let* authn_http_header = field_opt "authn_http_header" string in
+  let* authz_admins = field_opt_or ~default:[] "authz_admins" (list string) in
   let+ enrollment_expiration_time =
     field_opt_or ~default:259200.0 "enrollment_expiration_time" float in
-  { subject_base_dn; auth_http_header; auth_admins; enrollment_expiration_time }
+  { subject_base_dn; authn_bearer_jwk; authn_http_header; authz_admins;
+    enrollment_expiration_time }
 
 let global = Lwt_main.run begin
   let open Lwt.Syntax in
