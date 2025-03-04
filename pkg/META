@@ -1,7 +1,7 @@
 description = "In-House CA"
 version = "%%VERSION_NUM%%"
 requires = "
-  config-file
+  decoders-yojson
   eliom.server
   fd-send-recv
   ppx_deriving.runtime

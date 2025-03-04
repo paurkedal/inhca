@@ -14,24 +14,41 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-let group = new Config_file.group
+module Decode = Decoders_yojson.Basic.Decode
 
-let subject_base_dn =
-  new Config_file.string_cp ~group ["subject"; "base_dn"]
-                            "OU=Inhca,O=Example" "Subject base DN"
+type t = {
+  subject_base_dn: string;
+  (** Subject base DN. *)
 
-let auth_http_header_cp =
-  new Config_file.option_cp Config_file.string_wrappers ~group
-                            ["auth"; "http_header"]
-    None "HTTP header used to identify a logged-in user (e.g. SSL_CLIENT_S_DN)."
-let auth_admins_cp =
-  new Config_file.list_cp Config_file.string_wrappers ~group ["auth"; "admins"]
-    [] "List of values for the given HTTP header which grant admin access."
+  auth_http_header: string option;
+  (** HTTP header used to identify a logged-in user (e.g. SSL_CLIENT_S_DN). *)
 
-let enrollment_expiration_cp =
-  new Config_file.float_cp
-    ~group ["enrollment"; "expiration_time"] 259200.0
-    "Time in seconds before a new enrollment expires."
+  auth_admins: string list;
+  (** List of values for the given HTTP header which grant admin access. *)
 
-let () =
-  group#read (Filename.concat (Ocsigen_config.get_datadir ()) "inhca.conf")
+  enrollment_expiration_time: float;
+  (** Time in seconds before a new enrollment expires. *)
+}
+
+let decoder =
+  let open Decode in
+  let* subject_base_dn = field "subject_base_dn" string in
+  let* auth_http_header = field_opt "auth_http_header" string in
+  let* auth_admins = field_opt_or ~default:[] "auth_admins" (list string) in
+  let+ enrollment_expiration_time =
+    field_opt_or ~default:259200.0 "enrollment_expiration_time" float in
+  { subject_base_dn; auth_http_header; auth_admins; enrollment_expiration_time }
+
+let global = Lwt_main.run begin
+  let open Lwt.Syntax in
+  let path =
+    try Sys.getenv "INHCA_CONFIG" with Not_found -> "/etc/inhca.json"
+  in
+  let+ content = Lwt_io.with_file ~mode:Lwt_io.input path Lwt_io.read in
+  (match Decode.decode_value decoder (Yojson.Basic.from_string content) with
+   | Ok v -> v
+   | Error msg ->
+      Fmt.failwith "Cannot load %s: %a" path Decode.pp_error msg
+   | exception Yojson.Json_error msg ->
+      Fmt.failwith "Cannot load %s: %s" path msg)
+end

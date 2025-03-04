@@ -10,7 +10,7 @@ true: \
     package(ptime.clock)
 <web/server/*>: \
     thread, \
-    package(config-file), \
+    package(decoders-yojson), \
     package(eliom.server), \
     package(fd-send-recv), \
     package(mirage-crypto-pk), \

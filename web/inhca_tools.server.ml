@@ -45,14 +45,14 @@ let http_error code msg =
 let http_error_f code fmt = ksprintf (http_error code) fmt
 
 let authorize_admin () =
-  match Inhca_config.auth_http_header_cp#get with
+  match Inhca_config.(global.auth_http_header) with
   | None -> Lwt.return_unit
   | Some header_name ->
     let header_name = Ocsigen_header.Name.of_string header_name in
     let request = Eliom_request_info.get_ri () in
     (match Ocsigen_request.header request header_name with
      | Some user ->
-        if List.mem user Inhca_config.auth_admins_cp#get
+        if List.mem user Inhca_config.(global.auth_admins)
         then Lwt_log.info_f "Authorized %s." user
         else http_error `Forbidden "Admin access required."
      | None ->

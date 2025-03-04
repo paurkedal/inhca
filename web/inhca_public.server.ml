@@ -22,7 +22,7 @@ open Lwt.Infix
 module Log =
   Inhca_tools.Local_log (struct let section_name = "inhca:public" end)
 
-let base_dn_str = Inhca_config.subject_base_dn#get
+let base_dn_str = Inhca_config.(global.subject_base_dn)
 
 let base_dn = Dn.of_string base_dn_str
 

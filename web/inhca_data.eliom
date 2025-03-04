@@ -64,7 +64,7 @@ module%client Enrollment = Enrollment_base
 module%server Enrollment = struct
   include Enrollment_base
 
-  let default_expiration = Inhca_config.enrollment_expiration_cp#get
+  let default_expiration = Inhca_config.(global.enrollment_expiration_time)
 
   let create ~cn ~email () =
     let token =
