@@ -22,7 +22,7 @@ include Eliom_registration.App (struct
 end)
 
 let () =
-  Mirage_crypto_rng_lwt.initialize (module Mirage_crypto_rng.Fortuna);
+  Mirage_crypto_rng_unix.use_default ();
   let lwt_log =
     try Some (Sys.getenv "LWT_LOG") with Not_found -> None in
   let lwt_log_js =

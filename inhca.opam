@@ -8,11 +8,11 @@ bug-reports: "https://github.com/paurkedal/inhca/issues"
 depends: [
   "ocaml"
   "config-file"
-  "mirage-crypto-rng-lwt"
   "eliom" {>= "10.0.0"}
   "fd-send-recv"
   "fmt"
-  "mirage-crypto-rng-lwt"
+  "mirage-crypto-pk"
+  "mirage-crypto-rng" {>= "2.0.0"}
   "ocamlfind" {build}
   "prime"
   "ptime"

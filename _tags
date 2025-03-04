@@ -1,13 +1,21 @@
 true: bin_annot
 true: \
+    eliom_ppx, \
     package(fmt), \
+    package(ppx_deriving), \
+    package(lwt_ppx), \
+    package(js_of_ocaml-ppx_deriving_json), \
     package(prime.unstable), \
     package(ptime), \
     package(ptime.clock)
 <web/server/*>: \
+    thread, \
     package(config-file), \
     package(eliom.server), \
     package(fd-send-recv), \
+    package(mirage-crypto-pk), \
+    package(mirage-crypto-rng.unix), \
     package(x509)
 <web/client/*>: \
-    package(eliom.client)
+    package(eliom.client), \
+    package(js_of_ocaml-ppx)
