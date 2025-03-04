@@ -9,7 +9,7 @@ depends: [
   "ocaml"
   "config-file"
   "mirage-crypto-rng-lwt"
-  "eliom" {>= "6.0.0" & < "7~"}
+  "eliom" {>= "10.0.0"}
   "fd-send-recv"
   "fmt"
   "mirage-crypto-rng-lwt"
