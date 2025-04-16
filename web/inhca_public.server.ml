@@ -30,7 +30,7 @@ let mkpath sfx = Eliom_service.Path (Inhca_config.(global.site_prefix) @ sfx)
 
 let main_service =
   let get = Eliom_parameter.unit in
-  Eliom_service.(create ~path:(mkpath []) ~meth:(Get get) ())
+  Eliom_service.(create ~path:(mkpath [""]) ~meth:(Get get) ())
 
 let token_r =
   Eliom_reference.eref ~secure:true
