@@ -20,6 +20,9 @@ type t = {
   subject_base_dn: string;
   (** Subject base DN. *)
 
+  site_prefix: string list;
+  (** A prefix for services to work around ocsigen/eliom#636. *)
+
   authn_bearer_jwk: Jose.Jwk.public Jose.Jwk.t option;
   (** JWK for validating bearer JWT. *)
 
@@ -47,12 +50,14 @@ let bearer_jwk_decoder json =
 let decoder =
   let open Decode in
   let* subject_base_dn = field "subject_base_dn" string in
+  let* site_prefix = field_opt_or ~default:[] "site_prefix" (list string) in
   let* authn_bearer_jwk = field_opt "authn_bearer_jwk" bearer_jwk_decoder in
   let* authn_http_header = field_opt "authn_http_header" string in
   let* authz_admins = field_opt_or ~default:[] "authz_admins" (list string) in
   let+ enrollment_expiration_time =
     field_opt_or ~default:259200.0 "enrollment_expiration_time" float in
-  { subject_base_dn; authn_bearer_jwk; authn_http_header; authz_admins;
+  { subject_base_dn; site_prefix;
+    authn_bearer_jwk; authn_http_header; authz_admins;
     enrollment_expiration_time }
 
 let global = Lwt_main.run begin

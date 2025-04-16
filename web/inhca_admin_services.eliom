@@ -17,10 +17,12 @@
 open Lwt.Infix
 open Inhca_data
 
+let mkpath sfx = Eliom_service.Path (Inhca_config.(global.site_prefix) @ sfx)
+
 let admin_service =
   let open Eliom_service in
   let get = Eliom_parameter.unit in
-  create ~meth:(Get get) ~path:(Path ["admin"; ""]) ()
+  create ~meth:(Get get) ~path:(mkpath ["admin"; ""]) ()
 let%client admin_service = ~%admin_service
 
 let admin_server_function json f =

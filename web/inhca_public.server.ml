@@ -26,9 +26,11 @@ let base_dn_str = Inhca_config.(global.subject_base_dn)
 
 let base_dn = Dn.of_string base_dn_str
 
+let mkpath sfx = Eliom_service.Path (Inhca_config.(global.site_prefix) @ sfx)
+
 let main_service =
   let get = Eliom_parameter.unit in
-  Eliom_service.(create ~path:(Path []) ~meth:(Get get) ())
+  Eliom_service.(create ~path:(mkpath []) ~meth:(Get get) ())
 
 let token_r =
   Eliom_reference.eref ~secure:true
@@ -36,26 +38,26 @@ let token_r =
 
 let token_login_service =
   let get = Eliom_parameter.(suffix (string "token")) in
-  Eliom_service.(create ~path:(Path ["acquire"]) ~meth:(Get get) ())
+  Eliom_service.(create ~path:(mkpath ["acquire"]) ~meth:(Get get) ())
 
 let acquire_service =
   let get = Eliom_parameter.unit in
-  Eliom_service.(create ~path:(Path ["acquire"; ""]) ~meth:(Get get) ())
+  Eliom_service.(create ~path:(mkpath ["acquire"; ""]) ~meth:(Get get) ())
 
 let issue_pkcs12_service =
   let get = Eliom_parameter.unit in
   let post = Eliom_parameter.(string "password" ** string "password'") in
   let open Eliom_service in
-  create ~path:(Path ["acquire"; "issued-key-and-cert.p12"])
+  create ~path:(mkpath ["acquire"; "issued-key-and-cert.p12"])
          ~meth:(Post (get, post)) ()
 
 let cacert_service =
   let get = Eliom_parameter.unit in
-  Eliom_service.(create ~path:(Path ["cacert.pem"]) ~meth:(Get get) ())
+  Eliom_service.(create ~path:(mkpath ["cacert.pem"]) ~meth:(Get get) ())
 
 let crl_service =
   let get = Eliom_parameter.unit in
-  Eliom_service.(create ~path:(Path ["crl.pem"]) ~meth:(Get get) ())
+  Eliom_service.(create ~path:(mkpath ["crl.pem"]) ~meth:(Get get) ())
 
 let main_handler () () =
   Lwt.return F.(Inhca_tools.F.page ~title:"Inhca" [
