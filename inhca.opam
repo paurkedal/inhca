@@ -12,22 +12,24 @@ depends: [
   "fmt"
   "jose"
   "js_of_ocaml-compiler"
+  "js_of_ocaml-lwt"
   "js_of_ocaml-ppx"
-  "js_of_ocaml-ppx_deriving_json"
   "js_of_ocaml-tyxml"
   "lwt"
   "lwt_ppx"
   "logs"
   "mirage-crypto-pk"
-  "mirage-crypto-rng" {>= "2.0.0"}
-  "ocaml" {>= "4.04.0"}
+  "mirage-crypto-rng"
+  "mirage-crypto-rng-lwt"
+  "ocaml" {>= "4.08.1"}
   "opium" {>= "0.20.0"}
   "ppx_deriving_rpc"
-  "ppx_sexp_conv"
+  "ppx_deriving_yojson"
   "prime"
   "ptime"
   "rpclib"
   "rpclib-lwt"
+  "sqlite3"
   "x509" {>= "0.8.1"}
 ]
 build: [

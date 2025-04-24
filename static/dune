@@ -1,1 +1,5 @@
+(install
+ (section share)
+ (files inhca.css ../client/inhca_client.bc.js))
+
 (copy_files ../client/inhca_client.bc.js)

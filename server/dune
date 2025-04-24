@@ -1,11 +1,10 @@
 (library
  (name inhca_web_server)
+ (public_name inhca.web.server)
  (preprocess (pps
-    js_of_ocaml-ppx_deriving_json
     lwt_ppx
     ppx_deriving_rpc
-    ppx_deriving_yojson
-    ppx_sexp_conv))
+    ppx_deriving_yojson))
  (libraries
     fd-send-recv
     decoders-yojson

@@ -14,4 +14,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-let () = Inhca_web_server.Main.run ()
+open Cmdliner
+
+let serve_cmd =
+  let doc = "InhCA web server" in
+  let info = Cmd.info ~doc "serve" in
+  Cmd.v info
+    Term.(const Result.ok $ (const Inhca_web_server.Main.run $ const ()))
+
+let main_cmd =
+  let info = Cmd.info "inhca" in
+  Cmd.group info [
+    serve_cmd;
+  ]
+
+let () = exit (Cmd.eval_result main_cmd)
