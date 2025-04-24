@@ -37,21 +37,35 @@ let lwt_reporter ~write_log ?(write_app = write_log) () =
   in
   { Logs.report = report }
 
-let static_middleware ~vpaths () =
-  Opium.Middleware.static_unix ()
-    ~local_path:Config.(global.static_dir)
-    ~uri_prefix:vpaths.Vpaths.static
+let routes ~vpaths () = [
+  let static_dir = Config.(global.static_dir) in
+  Dream.scope "" [] [
+    Dream.get (Filename.concat vpaths.Vpaths.static "**")
+      (Dream.static static_dir);
+    Public.routes ~vpaths ();
+    Admin.routes ~vpaths ();
+  ]
+]
 
-let run () =
+let init = lazy begin
   let write_log = Lwt_io.write Lwt_io.stderr in
   let write_app = Lwt_io.write Lwt_io.stdout in
   Logs.set_reporter (lwt_reporter ~write_log ~write_app ());
   (* TODO: Setup log levels from configuration. *)
   Logs.set_level (Some Logs.Debug);
-  Mirage_crypto_rng_lwt.initialize (module Mirage_crypto_rng.Fortuna);
+  Mirage_crypto_rng_unix.use_default ()
+end
+
+let serve () =
+  Lazy.force init;
   let vpaths = Vpaths.create Config.(global.site_prefix) in
-  Opium.App.empty
-    |> Public.add_routes ~vpaths
-    |> Admin.add_routes ~vpaths
-    |> Opium.App.middleware (static_middleware ~vpaths ())
-    |> Opium.App.run_command
+  Dream.run
+    ~interface:Config.(global.listen_interface)
+    ~port:Config.(global.listen_port)
+    ?tls:Config.(global.tls_enabled)
+    ?certificate_file:Config.(global.tls_certificate_file)
+    ?key_file:Config.(global.tls_key_file)
+    @@
+  Dream.logger @@
+  Dream.memory_sessions @@
+  Dream.router (routes ~vpaths ())

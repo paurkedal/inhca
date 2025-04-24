@@ -1,4 +1,6 @@
 (executable
  (name main)
  (public_name inhca)
- (libraries inhca_web_server))
+ (libraries
+    cmdliner
+    inhca_web_server))

@@ -8,18 +8,18 @@
  (libraries
     fd-send-recv
     decoders-yojson
+    dream
     fmt
     jose
     logs
+    logs.fmt
     logs.lwt
     lwt
     mirage-crypto-rng
     mirage-crypto-rng-lwt
-    opium
     prime
     ptime
     ptime.clock.os
-    rock
     rpclib.core
     rpclib.json
     rpclib-lwt

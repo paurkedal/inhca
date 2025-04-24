@@ -23,7 +23,7 @@ let default_expiration = Config.(global.enrollment_expiration_time)
 
 let random_token () =
   let data = Mirage_crypto_rng.generate 15 in
-  Base64.(encode_string ~alphabet:uri_safe_alphabet) (Cstruct.to_string data)
+  Base64.(encode_string ~alphabet:uri_safe_alphabet) data
 
 let create ~cn ~email () =
   let token = random_token () in

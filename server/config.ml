@@ -28,6 +28,12 @@ type t = {
 
   static_dir: string;
 
+  listen_interface: string;
+  listen_port: int;
+  tls_enabled: bool option;
+  tls_certificate_file: string option;
+  tls_key_file: string option;
+
   authn_bearer_jwk: Jose.Jwk.public Jose.Jwk.t option;
   (** JWK for validating bearer JWT. *)
 
@@ -65,6 +71,12 @@ let decoder =
   let* subject_base_dn = field "subject_base_dn" string in
   let* site_prefix = field_opt_or ~default:"/" "site_prefix" string in
   let* static_dir = field_opt_or ~default:"static" "static_dir" string in
+  let* listen_interface =
+    field_opt_or ~default:"127.0.0.1" "listen_interface" string in
+  let* listen_port = field_opt_or ~default:8080 "listen_port" int in
+  let* tls_enabled = field_opt "tls_enabled" bool in
+  let* tls_certificate_file = field_opt "tls_certificate_file" string in
+  let* tls_key_file = field_opt "tls_key_file" string in
   let* authn_bearer_jwk = field_opt "authn_bearer_jwk" bearer_jwk_decoder in
   let* authn_http_header = field_opt "authn_http_header" string in
   let* authz_admins = field_opt_or ~default:[] "authz_admins" (list string) in
@@ -72,7 +84,9 @@ let decoder =
     field_opt_or ~default:259200.0 "enrollment_expiration_time" float in
   let* ca_dir = field_opt_or ~default:"/var/lib/inhca/ca" "ca_dir" string in
   let+ tmp_dir = field_opt_or ~default:"/var/lib/inhca/tmp" "tmp_dir" string in
-  { ocsidb_file; subject_base_dn; site_prefix; static_dir;
+  { ocsidb_file; subject_base_dn;
+    site_prefix; static_dir; listen_interface; listen_port;
+    tls_enabled; tls_certificate_file; tls_key_file;
     authn_bearer_jwk; authn_http_header; authz_admins;
     enrollment_expiration_time; ca_dir; tmp_dir; }
 

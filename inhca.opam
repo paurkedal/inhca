@@ -22,7 +22,7 @@ depends: [
   "mirage-crypto-rng"
   "mirage-crypto-rng-lwt"
   "ocaml" {>= "4.08.1"}
-  "opium" {>= "0.20.0"}
+  "dream" {>= "1.0.0~"}
   "ppx_deriving_rpc"
   "ppx_deriving_yojson"
   "prime"

@@ -20,7 +20,7 @@ let serve_cmd =
   let doc = "InhCA web server" in
   let info = Cmd.info ~doc "serve" in
   Cmd.v info
-    Term.(const Result.ok $ (const Inhca_web_server.Main.run $ const ()))
+    Term.(const Result.ok $ (const Inhca_web_server.Main.serve $ const ()))
 
 let main_cmd =
   let info = Cmd.info "inhca" in

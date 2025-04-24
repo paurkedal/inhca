@@ -19,7 +19,6 @@ open Lwt.Infix
 open Lwt.Syntax
 open Printf
 open Unprime_list
-open Opium
 module H = Tyxml_html
 
 open Admin_core
@@ -30,19 +29,19 @@ let authorize_admin handler req =
       if Config.(global.authz_admins) = [] then
         handler req
       else
-        Lwt.return @@ respond_with_error ~status:`Internal_server_error
+        respond_with_error ~status:`Internal_Server_Error
           "Authorization is not correctly configured."
    | Some h ->
-      (match Router.param req h with
+      (match Dream.param req h with
        | exception Not_found ->
-          Lwt.return @@ respond_with_error ~status:`Unauthorized
+          respond_with_error ~status:`Unauthorized
             "Missing authentication header."
        | user ->
           if List.mem user Config.(global.authz_admins) then
             let* () = Log.info (fun f -> f "Authorized %s." user) in
             handler req
           else
-            Lwt.return @@ respond_with_error ~status:`Forbidden
+            respond_with_error ~status:`Forbidden
               "Admin access required."))
 
 let idl_server =
@@ -74,9 +73,9 @@ let idl_server =
 
 let admin_api_handler =
   authorize_admin @@ fun req ->
-  let* call = Jsonrpc.call_of_string =|< Request.to_plain_text req in
-  let+ resp = idl_server call in
-  Response.of_plain_text (Jsonrpc.string_of_response resp)
+  let* call = Jsonrpc.call_of_string =|< Dream.body req in
+  let* resp = idl_server call in
+  Dream.json (Jsonrpc.string_of_response resp)
 
 let admin_handler =
   authorize_admin @@ fun _req ->
@@ -163,15 +162,15 @@ let admin_handler =
   let%lwt issue_trs = Lwt_stream.to_list @@
     Lwt_stream.map issue_tr (Openssl.Issue.load_all ()) in
 
-  Lwt.return @@
-    respond_with_page ~status:`OK ~title:"Pending Certificate Requests" [
-      H.h2 [H.txt "Pending Requests"];
-      enr_table;
-      H.h2 [H.txt "Issued Certificates"];
-      H.table ~a:[H.a_class ["std"]] (issue_header_tr :: issue_trs);
-    ]
+  respond_with_page ~status:`OK ~title:"Pending Certificate Requests" [
+    H.h2 [H.txt "Pending Requests"];
+    enr_table;
+    H.h2 [H.txt "Issued Certificates"];
+    H.table ~a:[H.a_class ["std"]] (issue_header_tr :: issue_trs);
+  ]
 
-let add_routes ~(vpaths : Vpaths.t) app =
-  app
-    |> App.get vpaths.admin admin_handler
-    |> App.post vpaths.admin_api admin_api_handler
+let routes ~(vpaths : Vpaths.t) () =
+  Dream.scope "" [] [
+    Dream.get vpaths.admin admin_handler;
+    Dream.post vpaths.admin_api admin_api_handler;
+  ]
