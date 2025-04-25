@@ -23,26 +23,54 @@ module H = Tyxml_html
 
 open Admin_core
 
+let pp_jwt =
+  Fmt.(using (fun jwt -> Yojson.Safe.to_string jwt.Jose.Jwt.payload) string)
+
 let authorize_admin handler req =
-  (match Config.(global.authn_http_header) with
-   | None ->
+  let unauthorized msg = respond_with_error ~status:`Unauthorized msg in
+  let check_user user =
+    if List.mem user Config.(global.authz_admins) then
+      let* () = Log.info (fun f -> f "Authorized %s." user) in
+      handler req
+    else
+      respond_with_error ~status:`Forbidden "Admin access required."
+  in
+  (match Config.(global.authn_bearer_jwk, global.authn_http_header) with
+   | None, None ->
       if Config.(global.authz_admins) = [] then
         handler req
       else
         respond_with_error ~status:`Internal_Server_Error
           "Authorization is not correctly configured."
-   | Some h ->
+   | Some jwk, _ ->
+      (match Dream.header req "Authorization" with
+       | None -> unauthorized "Missing authorization header."
+       | Some data ->
+          (match String.split_on_char ' ' data |> List.filter ((<>) "") with
+           | ["Bearer"; token] ->
+              let now = Ptime_clock.now () in
+              (match Jose.Jwt.of_string ~jwk ~now token with
+               | Ok jwt ->
+                  Log.debug (fun f -> f "JWT: %a" pp_jwt jwt) >>= fun () ->
+                  (match Jose.Jwt.get_string_claim jwt "sub" with
+                   | None -> unauthorized "JWT is missing the sub claim"
+                   | Some user -> check_user user)
+               | Error `Expired ->
+                  unauthorized "The bearer token has expired."
+               | Error `Invalid_signature ->
+                  unauthorized "The signature of the bearer token is invalid."
+               | Error (`Msg msg) ->
+                  unauthorized ("Bad bearer token: " ^ msg)
+               | Error `Not_json ->
+                  unauthorized "Bearer token data is not JSON."
+               | Error `Not_supported ->
+                  unauthorized "Bearer token format unsupported.")
+           | _ ->
+              unauthorized "Authorization header is not a bearer token."))
+   | None, Some h ->
       (match Dream.param req h with
-       | exception Not_found ->
-          respond_with_error ~status:`Unauthorized
-            "Missing authentication header."
-       | user ->
-          if List.mem user Config.(global.authz_admins) then
-            let* () = Log.info (fun f -> f "Authorized %s." user) in
-            handler req
-          else
-            respond_with_error ~status:`Forbidden
-              "Admin access required."))
+       | exception Not_found -> unauthorized "Missing authentication header."
+       | user -> check_user user))
 
 let idl_server =
   let ( ~@ ) = Rpc_lwt.T.put in
