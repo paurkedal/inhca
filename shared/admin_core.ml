@@ -1,4 +1,4 @@
-(* Copyright (C) 2023  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2023--2025  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,3 +18,8 @@ let string_of_ptime t =
   let tz_offset_s = Ptime_clock.current_tz_offset_s () in
   let pp = Ptime.pp_human ?tz_offset_s () in
   Fmt.to_to_string pp t
+
+let ( let*? ) = Lwt_result.Syntax.( let* )
+let ( let+? ) = Lwt_result.Syntax.( let+ )
+let ( >>=? ) = Lwt_result.Infix.( >>= )
+let ( >|=? ) = Lwt_result.Infix.( >|= )

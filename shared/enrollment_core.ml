@@ -62,12 +62,9 @@ let has_expired enr =
 let cn enr = enr.cn
 let email enr = enr.email
 
-(*
-type edit_message =
-  [ `Remove of Enrollment.t
-  | `Update of Enrollment.t
-  | `Add of Enrollment.t ]
-  [@@deriving json]
-*)
+type update =
+  | Add of t
+  | Remove of t
+[@@deriving rpcty]
 
 let pp = Fmt.(using cn string)

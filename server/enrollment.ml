@@ -19,6 +19,8 @@ open Lwt.Syntax
 
 include Enrollment_core
 
+let updates, send_update = React.E.create ()
+
 let default_expiration = Config.(global.enrollment_expiration_time)
 
 let random_token () =
@@ -30,52 +32,29 @@ let create ~cn ~email () =
   let expiration = Unix.time () +. default_expiration in
   {token; state = Prepared; expiration; cn; email}
 
-(*
-let create_dummy ~cn ~email ~token () =
-  {token; state = Prepared; expiration = 0.0; cn; email}
-*)
-
 let update ~state enr = {enr with state}
 
 let ocsipersist_table : t Ocsipersist.table Lwt.t =
   Ocsipersist.open_table "enrollment"
+
+(* TODO: Utilize the result return types for save, delete, and all. *)
 
 let save_exn enr =
   let* tbl = ocsipersist_table in
   Ocsipersist.add tbl (token enr) enr
 
 let save enr =
-  save_exn enr >|= Result.ok (* TODO *)
-
-(*
-let update enr =
-  let* tbl = ocsipersist_table in
-  Ocsipersist.add enrollment_table (Enrollment.token enr) enr
-    >|= Result.ok (* TODO *)
-*)
+  let+ () = save_exn enr in
+  send_update (Add enr);
+  Ok ()
 
 let delete enr =
   let* tbl = ocsipersist_table in
-  Ocsipersist.remove tbl (token enr)
-    >|= Result.ok (* TODO *)
+  let+ () = Ocsipersist.remove tbl (token enr) in
+  send_update (Remove enr);
+  Ok ()
 
 let all () =
   let* tbl = ocsipersist_table in
   Ocsipersist.fold_table (fun _ enr acc -> Lwt.return (enr :: acc)) tbl []
     >|= Result.ok (* TODO *)
-
-(*
-let edit_bus = Eliom_bus.create [%json: edit_message]
-
-let () = Lwt.async @@ fun () ->
-  enrollment_table >>= fun enrollment_table ->
-  Lwt_stream.iter_s
-    (function
-     | `Add enr ->
-        Ocsipersist.add enrollment_table (Enrollment.token enr) enr
-     | `Update enr ->
-        Ocsipersist.add enrollment_table (Enrollment.token enr) enr
-     | `Remove enr ->
-        Ocsipersist.remove enrollment_table (Enrollment.token enr))
-    (Eliom_bus.stream edit_bus)
-*)

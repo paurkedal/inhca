@@ -28,7 +28,7 @@ module H = Tyxml_js.Html
 
 module Enrollment = Enrollment_core
 
-module R = Admin_rpc.Make (Rpc_lwt.GenClient ())
+module Up = Admin_rpc.Make_up (Rpc_lwt.GenClient ())
 
 let report_error msg =
   Dom_html.window##alert (Js.string msg); (* FIXME *)
@@ -96,7 +96,7 @@ let rpc call =
     XmlHttpRequest.perform_raw_url
       ~content_type:"application/json"
       ~contents:(`String (Jsonrpc.string_of_call call))
-      vpaths.Vpaths.admin_api
+      vpaths.Vpaths.admin_rpc_up
   in
   if code <> 200 then
     let msg = Printf.sprintf "HTTP request failed with status %d." code in
@@ -106,9 +106,7 @@ let rpc call =
 
 let admin_handler_client _ev =
   let enr_table_dom = ElementById.table "inhca-enrollment-table" in
-(*
   let static_row_count = 2 in
-*)
 
   let add_button = ElementById.button "inhca-enrollment-add" in
   add_button##.onclick := Dom.handler begin fun _ev ->
@@ -120,7 +118,7 @@ let admin_handler_client _ev =
       begin
         cn_input##.value := Js.string "";
         email_input##.value := Js.string "";
-        Lwt.async (fun () -> R.add_enrollment rpc cn email |> report_result_box)
+        Lwt.async (fun () -> Up.add_enrollment rpc cn email |> report_result_box)
       end;
     Js._false
   end;
@@ -128,7 +126,7 @@ let admin_handler_client _ev =
   let updatedb_button = ElementById.button "inhca-updatedb" in
   updatedb_button##.onclick := Dom.handler begin fun _ev ->
     Lwt.async begin fun () ->
-      R.updatedb rpc () |> report_result_box >|= fun () ->
+      Up.updatedb rpc () |> report_result_box >|= fun () ->
       Dom_html.window##.location##reload
     end;
     Js._false
@@ -144,7 +142,7 @@ let admin_handler_client _ev =
     in
     button##.onclick := Dom.handler begin fun _ev ->
       Lwt.async begin fun () ->
-        R.revoke_serial rpc serial |> report_result_box >|= fun () ->
+        Up.revoke_serial rpc serial |> report_result_box >|= fun () ->
         Dom_html.window##.location##reload
       end;
       Js._false
@@ -157,26 +155,18 @@ let admin_handler_client _ev =
   let delete_handler enr (ev : Dom_html.mouseEvent Js.t) =
     (Js.Unsafe.coerce (Dom.eventTarget ev)
       :> Dom_html.inputElement Js.t)##.disabled := Js._true;
-    Lwt.async (fun () -> R.delete_enrollment rpc enr |> report_result_box);
+    Lwt.async (fun () -> Up.delete_enrollment rpc enr |> report_result_box);
     false
   in
 
   let enrollment_link enr =
     let token = Enrollment.token enr in
     let href = vpaths.Vpaths.acquire_login token in
-    H.a ~a:H.[a_href href] [H.txt token]
+    H.a ~a:H.[a_href href; a_class ["inhca-base64-token"]] [H.txt token]
   in
 
   let enr_set = ref Enrollment_set.empty in
 
-  let append_enrollment enr =
-    enr_set := Enrollment_set.add enr !enr_set;
-    let tr = tr_of_enrollment enrollment_link delete_handler enr in
-    let tr_dom = (Tyxml_js.To_dom.of_tr tr :> Dom.node Js.t) in
-    ignore (enr_table_dom##appendChild tr_dom)
-  in
-
-(*TODO
   let remove_enrollment enr =
     (match Enrollment_set.locate enr !enr_set with
      | false, _ ->
@@ -187,43 +177,39 @@ let admin_handler_client _ev =
   in
 
   let add_enrollment enr =
-    let row =
-      (match Enrollment_set.locate enr !enr_set with
-       | false, i ->
-          enr_set := Enrollment_set.add enr !enr_set;
-          enr_table_dom##insertRow (static_row_count + i)
-       | true, i ->
-          Js.Opt.get (enr_table_dom##.rows##item (static_row_count + i))
-                     (fun () -> failwith "Js.Opt.get"))
-    in
-    let add_td cell =
-      ignore (row##appendChild (Tyxml_js.To_dom.of_td cell :> Dom.node Js.t))
-    in
-    List.iter add_td (tds_of_enrollment enrollment_link delete_handler enr)
+    let is_present, pos = Enrollment_set.locate enr !enr_set in
+    if is_present then
+      enr_table_dom##deleteRow (static_row_count + pos)
+    else
+      enr_set := Enrollment_set.add enr !enr_set;
+    let row = enr_table_dom##insertRow (static_row_count + pos) in
+    tds_of_enrollment enrollment_link delete_handler enr
+      |> List.iter (fun c -> Dom.appendChild row (Tyxml_js.To_dom.of_td c))
   in
-*)
 
-  (* Populate the enrollment table. *)
-  let* () = unbox (R.list_enrollments rpc ()) >|= List.iter append_enrollment in
-
-(*TODO
-  (* Keep the enrollment table up to data. *)
-  let update = function
-   | `Remove enr ->
-      Log.debug (fun f ->
-        f "Deleting %s for %s <%s>."
-          (Enrollment.token enr) (Enrollment.cn enr) (Enrollment.email enr));
-      remove_enrollment enr
-   | `Update enr ->
-      Log.debug (fun f -> f "Replacing %s." (Enrollment.token enr));
-      remove_enrollment enr;
-      add_enrollment enr;
-   | `Add enr ->
-      Log.debug (fun f -> f "Adding %s." (Enrollment.token enr));
-      add_enrollment enr
+  let () =
+    let idl_server =
+      let module Down = Admin_rpc.Make_down (Idl.Exn.GenServer ()) in
+      Down.enrollment_added add_enrollment;
+      Down.enrollment_deleted remove_enrollment;
+      Idl.Exn.server Down.implementation
+    in
+    let event_source =
+      new%js EventSource.eventSource (Js.string vpaths.Vpaths.admin_rpc_down)
+    in
+    event_source##.onerror := Dom.handler begin fun event ->
+      Console.console##error ("Failed to receive event:", event);
+      Js._true
+    end;
+    event_source##.onmessage := Dom.handler begin fun event ->
+      let _, _, call =
+        Jsonrpc.version_id_and_call_of_string_option (Js.to_string event##.data)
+      in
+      let _resp : Rpc.response = idl_server call in
+      Js._true
+    end
   in
-  Lwt.async (fun () -> Lwt_stream.iter update update_stream);
-*)
+
   Lwt.return_unit
 
 let () = Lwt.async (fun () -> Lwt_js_events.onload () >>= admin_handler_client)

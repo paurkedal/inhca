@@ -30,3 +30,5 @@ div.error {
 }
 .valid { color: #007700; }
 .invalid { color: #770000; }
+
+.inhca-base64-token { font-family: monospace; }

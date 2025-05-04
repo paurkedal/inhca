@@ -17,6 +17,7 @@ depends: [
   "js_of_ocaml-tyxml"
   "lwt"
   "lwt_ppx"
+  "lwt_react"
   "logs"
   "mirage-crypto-pk"
   "mirage-crypto-rng"

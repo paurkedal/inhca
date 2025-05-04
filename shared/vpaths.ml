@@ -26,7 +26,8 @@ type t = {
 
   (* admin *)
   admin: string; (* GET *)
-  admin_api: string;
+  admin_rpc_up: string;
+  admin_rpc_down: string;
 }
 
 let ( ^/ ) = Filename.concat
@@ -43,5 +44,6 @@ let create root = {
 
   (* admin *)
   admin = root ^/ "admin";
-  admin_api = root ^/ "admin/api";
+  admin_rpc_up = root ^/ "admin/rpc/up";
+  admin_rpc_down = root ^/ "admin/rpc/down";
 }

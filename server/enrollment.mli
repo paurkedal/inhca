@@ -1,4 +1,4 @@
-(* Copyright (C) 2021--2024  Petter A. Urkedal <paurkedal@gmail.com>
+(* Copyright (C) 2021--2025  Petter A. Urkedal <paurkedal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,4 @@ val delete : t -> (unit, 'err) result Lwt.t
 
 val all : unit -> (t list, 'err) result Lwt.t
 
-(* FIXME
-val edit_bus : (edit_message, edit_message) Eliom_bus.t
-*)
+val updates : update React.E.t

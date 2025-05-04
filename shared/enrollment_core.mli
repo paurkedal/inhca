@@ -20,9 +20,6 @@ type state =
   | Acquired
   | Failed
   | Revoked
-(*
-[@@deriving rpcty]
-*)
 
 val string_of_state : state -> string
 
@@ -33,9 +30,7 @@ type t = {
   expiration: float;
   state: state;
 }
-(*
-[@@deriving rpcty]
-*)
+
 val t : t Rpc.Types.def
 
 val t_list : t list Rpc.Types.def
@@ -56,12 +51,10 @@ val email : t -> string
 
 val state : t -> state
 
-(*
-type edit_message =
-  [ `Remove of Enrollment.t
-  | `Update of Enrollment.t
-  | `Add of Enrollment.t ]
-  [@@deriving json]
-*)
+type update =
+  | Add of t
+  | Remove of t
+
+val update : update Rpc.Types.def
 
 val pp : t Fmt.t

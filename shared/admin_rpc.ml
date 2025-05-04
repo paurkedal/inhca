@@ -22,7 +22,7 @@ let email_p = Idl.Param.mk Rpc.Types.string
 let enrollment_p = Idl.Param.mk Enrollment_core.t
 let enrollment_list_p = Idl.Param.mk Enrollment_core.t_list
 
-module Make (R : Idl.RPC) = struct
+module Make_up (R : Idl.RPC) = struct
   open R
 
   let list_enrollments = declare "list_enrollments"
@@ -46,13 +46,28 @@ module Make (R : Idl.RPC) = struct
     (int_p @-> returning unit_p err_p)
 
   let implementation = implement {
-    Idl.Interface.name = "Inhca_admin";
+    Idl.Interface.name = "inhca.admin_rpc";
     namespace = None;
     description = ["InhCA Administrative Web Protocol"];
     version = (1, 0, 0);
   }
 end
 
-(*
-let admin_update = Server_function.create [%of_yojson: update] [%to_yojson: unit]
-*)
+module Make_down (R : Idl.RPC) = struct
+  open R
+
+  let enrollment_added = declare_notification "enrollment_added"
+    ["An enrollment has been added to the server."]
+    (enrollment_p @-> returning unit_p err_p)
+
+  let enrollment_deleted = declare_notification "enrollment_deleted"
+    ["An enrollment has been removed from the server."]
+    (enrollment_p @-> returning unit_p err_p)
+
+  let implementation = implement {
+    Idl.Interface.name = "inhca.admin_bus";
+    namespace = None;
+    description = ["InhCA Administrative Protocol, Server-Initiated Messages"];
+    version = (1, 0, 0);
+  }
+end

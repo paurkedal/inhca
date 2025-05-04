@@ -72,38 +72,84 @@ let authorize_admin handler req =
        | exception Not_found -> unauthorized "Missing authentication header."
        | user -> check_user user))
 
+module Down_init = Admin_rpc.Make_down (Rpc_lwt.GenClient ())
+module Down = struct
+  let sink = Lwt_condition.create ()
+
+  include Admin_rpc.Make_down (Idl.Exn.GenClient (struct
+    let rpc call =
+      Lwt_condition.broadcast sink (Jsonrpc.string_of_call call);
+      Rpc.success Null
+  end))
+end
+
 let idl_server =
   let ( ~@ ) = Rpc_lwt.T.put in
-  let module R = Admin_rpc.Make (Rpc_lwt.GenServer ()) in
+  let module Up = Admin_rpc.Make_up (Rpc_lwt.GenServer ()) in
   let rewrite_openssl_error =
     Fun.flip Lwt_result.bind_error @@ fun err ->
       Openssl.log_error err >|= fun () ->
       let msg = "The openssl command failed, see server log for details." in
       Error (Idl.DefaultError.InternalError msg)
   in
-  R.list_enrollments (fun () -> ~@(
+  Up.list_enrollments (fun () -> ~@(
     Enrollment.all ()
   ));
-  R.add_enrollment (fun cn email -> ~@(
+  Up.add_enrollment (fun cn email -> ~@(
     let enrollment = Enrollment.create ~cn ~email () in
-    Enrollment.save enrollment
+    let+? () = Enrollment.save enrollment in
+    Down.enrollment_added enrollment
   ));
-  R.delete_enrollment (fun enr -> ~@(
-    Enrollment.delete enr
+  Up.delete_enrollment (fun enrollment -> ~@(
+    let+? () = Enrollment.delete enrollment in
+    Down.enrollment_deleted enrollment
   ));
-  R.updatedb (fun () -> ~@(
+  Up.updatedb (fun () -> ~@(
     Openssl.updatedb () |> rewrite_openssl_error
   ));
-  R.revoke_serial (fun serial -> ~@(
+  Up.revoke_serial (fun serial -> ~@(
     Openssl.revoke_serial serial |> rewrite_openssl_error
   ));
-  Rpc_lwt.server R.implementation
+  Rpc_lwt.server Up.implementation
 
-let admin_api_handler =
+let admin_rpc_up_handler =
   authorize_admin @@ fun req ->
   let* call = Jsonrpc.call_of_string =|< Dream.body req in
   let* resp = idl_server call in
   Dream.json (Jsonrpc.string_of_response resp)
+
+let admin_rpc_down_handler =
+  authorize_admin @@ fun _req ->
+  let headers = ["Content-Type", "text/event-stream"] in
+  Dream.stream ~headers @@ fun stream ->
+  let send_string call_str =
+    let* () = Dream.write stream "data: " in
+    let* () = Dream.write stream call_str in
+    let* () = Dream.write stream "\n\n" in
+    Dream.flush stream
+  in
+  let send_rpc call =
+    let+ () = send_string (Jsonrpc.string_of_call call) in
+    Rpc.success Null
+  in
+  let rec monitor () =
+    Lwt_condition.wait Down.sink >>= send_string >>= monitor
+  in
+  (Enrollment.all () >>= function
+   | Ok enrollments ->
+      let send_down enrollment =
+        let* resp =
+          Rpc_lwt.T.get (Down_init.enrollment_added send_rpc enrollment)
+        in
+        (match resp with
+         | Ok () ->
+            Lwt.return_unit
+         | Error (Idl.DefaultError.InternalError msg) ->
+            Log.err (fun f -> f "Failed to send initial enrollment: %s" msg))
+      in
+      Lwt_list.iter_s send_down enrollments >>= monitor
+   | Error _error ->
+      failwith "Failed to gather initial enrollments to send.")
 
 let admin_handler =
   authorize_admin @@ fun _req ->
@@ -200,5 +246,6 @@ let admin_handler =
 let routes ~(vpaths : Vpaths.t) () =
   Dream.scope "" [] [
     Dream.get vpaths.admin admin_handler;
-    Dream.post vpaths.admin_api admin_api_handler;
+    Dream.post vpaths.admin_rpc_up admin_rpc_up_handler;
+    Dream.get vpaths.admin_rpc_down admin_rpc_down_handler;
   ]

@@ -1,10 +1,7 @@
 (library
  (name inhca_web_server)
  (public_name inhca.web.server)
- (preprocess (pps
-    lwt_ppx
-    ppx_deriving_rpc
-    ppx_deriving_yojson))
+ (preprocess (pps lwt_ppx ppx_deriving_rpc))
  (libraries
     fd-send-recv
     decoders-yojson
@@ -15,11 +12,13 @@
     logs.fmt
     logs.lwt
     lwt
+    lwt_react
     mirage-crypto-rng
     mirage-crypto-rng-lwt
     prime
     ptime
     ptime.clock.os
+    react
     rpclib.core
     rpclib.json
     rpclib-lwt
