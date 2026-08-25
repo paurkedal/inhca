@@ -186,31 +186,6 @@ let pread_openssl_ca args =
   let config = get_capath "openssl.cnf" in
   pread_openssl "ca" ("-config" :: config :: args)
 
-let save_spkac comps fp =
-  Lwt_io.with_file ~mode:Lwt_io.output fp begin fun oc ->
-    let comp_counters = Hashtbl.create 8 in
-    Lwt_list.iter_s
-      begin fun (k, v) ->
-        let i = try Hashtbl.find comp_counters k with Not_found -> 0 in
-        Hashtbl.replace comp_counters k (i + 1);
-        Lwt_io.fprintf oc "%d.%s=%s\n" i k v
-      end
-      comps
-  end
-
-let sign_spkac ?(days = 365) ~token comps =
-  let%lwt workdir = mk_tmpdir token in
-  let spkac_path = Filename.concat workdir "inhclient.spkac" in
-  save_spkac comps spkac_path >>= fun () ->
-  let cert_path = Filename.concat workdir "inhclient.pem" in
-  match%lwt
-    exec_openssl_ca
-      ["-days"; string_of_int days; "-notext"; "-batch";
-       "-spkac"; spkac_path; "-out"; cert_path]
-  with
-   | Ok () -> Lwt.return (Ok cert_path)
-   | Error error -> Lwt.return (Error error)
-
 let revoke_serial serial = exec_openssl_ca ["-revoke"; get_newcertpath serial]
 let updatedb () = exec_openssl_ca ["-updatedb"]
 

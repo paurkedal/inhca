@@ -60,16 +60,6 @@ val cacert_path : string
 
 val gencrl : unit -> (string, error) result Lwt.t
 
-val sign_spkac : ?days: int -> token: string -> (string * string) list ->
-                 (string, error) result Lwt.t
-(** [sign_spkac spkac] signs the SPKAC (Signed Public Key and Challenge) given
-    by [spkac] and returns the certificate.
-
-    @param days
-      The number of days the certificate will be valid, 365 by default.
-    @param request_id
-      Used for constructing a temporary path. *)
-
 val revoke_serial : int -> (unit, error) result Lwt.t
 (** [revoke_serial n] revokes the certificate with serial number [n].  *)
 
