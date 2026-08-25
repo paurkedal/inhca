@@ -83,8 +83,3 @@ val sign_pem : ?days: int -> token: string -> string ->
 
     @param request_id
       Used for constructing a temporary path. *)
-
-val export_pkcs12 :
-  ?name: string -> password: string ->
-  cert: string -> certkey: string ->
-  unit -> (string, error) result Lwt.t

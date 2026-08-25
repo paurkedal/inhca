@@ -170,26 +170,6 @@ let pread_openssl subcommand args =
    | pst, _, stderr ->
       Lwt.return (Error (command, pst, stderr))
 
-let pmap_openssl subcommand args input =
-  let command = openssl_command subcommand args in
-  Log.debug (fun f -> f "Exec: openssl %a" pp_command command) >>= fun () ->
-  match%lwt
-    Lwt_process.with_process_full command @@ fun proc ->
-      let%lwt () =
-          Lwt_io.write proc#stdin input >>= fun () -> Lwt_io.close proc#stdin
-        and stdout = Lwt_io.read proc#stdout
-        and stderr = read_lines proc#stderr
-        and status = proc#status in
-      Lwt.return (status, stdout, stderr)
-  with
-   | Unix.WEXITED 0, stdout, stderr ->
-      Lwt_list.iter_s (fun line -> Log.info (fun f -> f "%s" line)) stderr
-        >>= fun () ->
-      Lwt.return (Ok stdout)
-   | pst, _, stderr ->
-      Lwt.return (Error (command, pst, stderr))
-
-
 (* CA Commands *)
 
 let cacert_path = get_capath "cacert.pem"
@@ -241,21 +221,3 @@ let sign_pem ?(days = 365) ~token csr =
   pread_openssl_ca
     ["-days"; string_of_int days; "-notext"; "-batch";
      "-in"; csr_path]
-
-
-(* PKCS12 Commands *)
-
-let default_pkcs12_name = "Key and Certificate from the Inhca Web CA"
-
-let export_pkcs12 ?(name = default_pkcs12_name) ~password ~cert ~certkey () =
-  let pwfd_in, pwfd_out = Lwt_unix.pipe_out () in
-  let pwarg = sprintf "fd:%d" (Fd_send_recv.int_of_fd pwfd_in) in
-  let%lwt () =
-    Lwt_unix.write_string pwfd_out password 0 (String.length password)
-      >>= fun _ ->
-    Lwt_unix.write_string pwfd_out "\n" 0 1 >>= fun _ ->
-    Lwt_unix.close pwfd_out
-  and result =
-    pmap_openssl "pkcs12"
-      ["-export"; "-name"; name; "-passout"; pwarg] (certkey ^ cert) in
-  Lwt.return result

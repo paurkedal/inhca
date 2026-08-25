@@ -175,7 +175,6 @@ let error_msg_of_string = Result.map_error (fun s -> `Msg s)
 let deliver_certificate ~ctx enrollment password =
   let dn = X509_dn.cn (Enrollment.cn enrollment) :: ctx.subject_base_dn in
   let key = `RSA (Mirage_crypto_pk.Rsa.generate ~bits:ctx.rsa_key_size ()) in
-  let key_pem = X509.Private_key.encode_pem key in
   let@/? csr = X509.Signing_request.create dn ~digest:ctx.rsa_key_digest key in
   let csr_pem = X509.Signing_request.encode_pem csr in
   let token = Enrollment.token enrollment in
@@ -194,13 +193,16 @@ let deliver_certificate ~ctx enrollment password =
    | Ok crt_pem ->
       let enrollment = Enrollment.(update ~state:Acquired) enrollment in
       let@*? () = Enrollment.save enrollment >|= error_msg_of_string in
-      (match%lwt
-        Openssl.export_pkcs12 ~password ~cert:crt_pem ~certkey:key_pem () with
-       | Ok pkcs12 ->
+      (match X509.Certificate.decode_pem crt_pem with
+       | Ok crt ->
+          let pkcs12 =
+            X509.PKCS12.encode_der (X509.PKCS12.create password [crt] key)
+          in
           let headers = ["Content-Type", "application/x-pkcs12"] in
           Dream.respond ~headers pkcs12
-       | Error error ->
-          let* () = Openssl.log_error error in
+       | Error (`Msg msg) ->
+          Log.err (fun f -> f "Failed to decode signed certificate: %s" msg)
+            >>= fun () ->
           respond_with_error ~status:`Internal_Server_Error
             "Failed to deliver key and certificate, \
              please contact side admin."))
@@ -209,11 +211,19 @@ let issued_pkcs12_handler ~ctx =
   with_enrollment @@ fun ~enrollment req ->
   (Dream.form req >>= function
    | `Ok ["password1", password; "password2", password'] ->
+      if String.length password < Config.global.export_password_min_length then
+        let error = [
+          Fmt.kstr H.txt "Password must be at least %d characters long."
+            Config.global.export_password_min_length
+          ]
+        in
+        acquire_handler' ~ctx ~error ~enrollment req
+      else
       if password <> password' then
         let error = [H.txt "Passwords didn't match."] in
         acquire_handler' ~ctx ~error ~enrollment req
       else
-        deliver_certificate ~ctx enrollment password
+      deliver_certificate ~ctx enrollment password
    | `Expired _ ->
       respond_with_message
         ~status:`Request_Timeout ~title: "Session Expired"

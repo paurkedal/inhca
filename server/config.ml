@@ -53,6 +53,9 @@ type t = {
 
   tmp_dir: string;
   (** Directory to be used for temporary files. *)
+
+  export_password_min_length: int;
+  (** Minimum length of export password. *)
 }
 
 let bearer_jwk_decoder json =
@@ -83,12 +86,15 @@ let decoder =
   let* enrollment_expiration_time =
     field_opt_or ~default:259200.0 "enrollment_expiration_time" float in
   let* ca_dir = field_opt_or ~default:"/var/lib/inhca/ca" "ca_dir" string in
-  let+ tmp_dir = field_opt_or ~default:"/var/lib/inhca/tmp" "tmp_dir" string in
+  let* tmp_dir = field_opt_or ~default:"/var/lib/inhca/tmp" "tmp_dir" string in
+  let+ export_password_min_length =
+    field_opt_or ~default:8 "export_password_min_length" int in
   { ocsidb_file; subject_base_dn;
     site_prefix; static_dir; listen_interface; listen_port;
     tls_enabled; tls_certificate_file; tls_key_file;
     authn_bearer_jwk; authn_http_header; authz_admins;
-    enrollment_expiration_time; ca_dir; tmp_dir; }
+    enrollment_expiration_time; ca_dir; tmp_dir;
+    export_password_min_length }
 
 let global = Lwt_main.run begin
   let open Lwt.Syntax in
