@@ -56,6 +56,13 @@ module ElementById = struct
   let button id = get_element id Dom_html.CoerceTo.button
 end
 
+module NodeList = struct
+  let iter f xs =
+    for i = 0 to xs##.length - 1 do
+      f (Js.Opt.get (xs##item i) (fun () -> failwith "Js.Opt.get"))
+    done
+end
+
 let tds_of_enrollment enrollment_link delete_handler enr =
   let expiration_class =
     if Enrollment.has_expired enr then "invalid" else "valid"
@@ -149,8 +156,7 @@ let admin_handler_client _ev =
     end
   in
   Dom_html.document##getElementsByClassName (Js.string "inhca-revoke-serial")
-    |> Dom.list_of_nodeList
-    |> List.iter instrument_revoke_serial_button;
+    |> NodeList.iter instrument_revoke_serial_button;
 
   let delete_handler enr (ev : Dom_html.mouseEvent Js.t) =
     (Js.Unsafe.coerce (Dom.eventTarget ev)
