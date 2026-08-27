@@ -14,7 +14,7 @@
     lwt
     lwt_react
     mirage-crypto-rng
-    mirage-crypto-rng-lwt
+    mirage-crypto-rng.unix
     prime
     ptime
     ptime.clock.os

@@ -21,7 +21,6 @@ depends: [
   "logs"
   "mirage-crypto-pk"
   "mirage-crypto-rng"
-  "mirage-crypto-rng-lwt"
   "ocaml" {>= "4.08.1"}
   "dream" {>= "1.0.0~"}
   "ppx_deriving_rpc"
