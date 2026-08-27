@@ -34,6 +34,8 @@ type t = {
   tls_certificate_file: string option;
   tls_key_file: string option;
 
+  comet_ping_interval: float;
+
   authn_bearer_jwk: Jose.Jwk.public Jose.Jwk.t option;
   (** JWK for validating bearer JWT. *)
 
@@ -80,6 +82,8 @@ let decoder =
   let* tls_enabled = field_opt "tls_enabled" bool in
   let* tls_certificate_file = field_opt "tls_certificate_file" string in
   let* tls_key_file = field_opt "tls_key_file" string in
+  let* comet_ping_interval =
+    field_opt_or ~default:8.0 "comet_ping_interval" float in
   let* authn_bearer_jwk = field_opt "authn_bearer_jwk" bearer_jwk_decoder in
   let* authn_http_header = field_opt "authn_http_header" string in
   let* authz_admins = field_opt_or ~default:[] "authz_admins" (list string) in
@@ -92,6 +96,7 @@ let decoder =
   { ocsidb_file; subject_base_dn;
     site_prefix; static_dir; listen_interface; listen_port;
     tls_enabled; tls_certificate_file; tls_key_file;
+    comet_ping_interval;
     authn_bearer_jwk; authn_http_header; authz_admins;
     enrollment_expiration_time; ca_dir; tmp_dir;
     export_password_min_length }

@@ -122,6 +122,10 @@ let admin_rpc_down_handler =
   authorize_admin @@ fun _req ->
   let headers = ["Content-Type", "text/event-stream"] in
   Dream.stream ~headers @@ fun stream ->
+  let send_ping () =
+    let* () = Dream.write stream ":ping\n" in
+    Dream.flush stream
+  in
   let send_string call_str =
     let* () = Dream.write stream "data: " in
     let* () = Dream.write stream call_str in
@@ -133,7 +137,10 @@ let admin_rpc_down_handler =
     Rpc.success Null
   in
   let rec monitor () =
-    Lwt_condition.wait Down.sink >>= send_string >>= monitor
+    Lwt.pick [
+      Lwt_unix.sleep Config.(global.comet_ping_interval) >>= send_ping;
+      Lwt_condition.wait Down.sink >>= send_string;
+    ] >>= monitor
   in
   (Enrollment.all () >>= function
    | Ok enrollments ->
